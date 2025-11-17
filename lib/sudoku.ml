@@ -91,9 +91,176 @@ let format_grid grid =
 
 let print_grid grid = format_grid grid |> print_string
 
-(** [update_cell grid row col value] updates the cell at [row] [col] to [value].
-    Returns a new grid with the updated cell. *)
-let update_cell grid row col value =
+(** [contains_all_digits_1_to_9 arr] checks if array [arr] contains exactly one
+    of each digit from 1 to 9 (no duplicates, no missing digits). *)
+let contains_all_digits_1_to_9 arr =
+  if Array.length arr <> 9 then false
+  else
+    let seen = Array.make 10 false in
+    let rec check i =
+      if i >= Array.length arr then
+        (* Check that all digits 1-9 were seen *)
+        let rec verify_digit d =
+          if d > 9 then true
+          else if not seen.(d) then false
+          else verify_digit (d + 1)
+        in
+        verify_digit 1
+      else
+        let value = arr.(i) in
+        (* Value must be in range 1-9 *)
+        if value < 1 || value > 9 then false
+        else if seen.(value) then false (* Duplicate found *)
+        else (
+          seen.(value) <- true;
+          check (i + 1))
+    in
+    check 0
+
+(** [is_row_valid grid row] checks if row [row] contains digits 1-9 exactly
+    once. *)
+let is_row_valid grid row = contains_all_digits_1_to_9 grid.(row)
+
+(** [is_col_valid grid col] checks if column [col] contains digits 1-9 exactly
+    once. *)
+let is_col_valid grid col =
+  let col_array = Array.init 9 (fun i -> grid.(i).(col)) in
+  contains_all_digits_1_to_9 col_array
+
+(** [is_box_valid grid box_row box_col] checks if the 3x3 box starting at
+    [box_row] [box_col] contains digits 1-9 exactly once. *)
+let is_box_valid grid box_row box_col =
+  let box_array = Array.make 9 0 in
+  let idx = ref 0 in
+  for r = 0 to 2 do
+    for c = 0 to 2 do
+      box_array.(!idx) <- grid.((box_row * 3) + r).((box_col * 3) + c);
+      idx := !idx + 1
+    done
+  done;
+  contains_all_digits_1_to_9 box_array
+
+(** [is_complete grid] checks if all cells in [grid] are filled (no zeros). *)
+let is_complete grid =
+  let rec check_row row =
+    if row >= 9 then true
+    else
+      let rec check_col col =
+        if col >= 9 then check_row (row + 1)
+        else if grid.(row).(col) = 0 then false
+        else check_col (col + 1)
+      in
+      check_col 0
+  in
+  check_row 0
+
+(** [is_valid_sudoku grid] checks if [grid] is a valid completed Sudoku
+    solution. Returns true if:
+    - All cells are filled (no zeros)
+    - Each row contains digits 1-9 exactly once (validates range 1-9)
+    - Each column contains digits 1-9 exactly once (validates range 1-9)
+    - Each 3x3 box contains digits 1-9 exactly once (validates range 1-9) *)
+let is_valid_sudoku grid =
+  if not (is_complete grid) then false
+  else
+    let rows_valid =
+      let rec check_row i =
+        if i >= 9 then true
+        else if not (is_row_valid grid i) then false
+        else check_row (i + 1)
+      in
+      check_row 0
+    in
+    if not rows_valid then false
+    else
+      let cols_valid =
+        let rec check_col i =
+          if i >= 9 then true
+          else if not (is_col_valid grid i) then false
+          else check_col (i + 1)
+        in
+        check_col 0
+      in
+      if not cols_valid then false
+      else
+        let boxes_valid =
+          let rec check_box_row br =
+            if br >= 3 then true
+            else
+              let rec check_box_col bc =
+                if bc >= 3 then check_box_row (br + 1)
+                else if not (is_box_valid grid br bc) then false
+                else check_box_col (bc + 1)
+              in
+              check_box_col 0
+          in
+          check_box_row 0
+        in
+        boxes_valid
+
+(** [is_cell_locked original_grid row col] checks if a cell was originally
+    filled in the initial board. *)
+let is_cell_locked original_grid row col = original_grid.(row).(col) <> 0
+
+(** [would_create_duplicate grid row col value] checks if placing [value] at
+    [row] [col] would create a duplicate in the row, column, or box. Returns
+    true if it would create a duplicate, false otherwise. Value 0 (clearing) is
+    always allowed. *)
+let would_create_duplicate grid row col value =
+  if value = 0 then false (* Clearing is always allowed *)
+  else
+    (* Check row for duplicates (excluding current cell) *)
+    let row_has_duplicate =
+      let rec check_col c =
+        if c >= 9 then false
+        else if c = col then check_col (c + 1)
+        else if grid.(row).(c) = value then true
+        else check_col (c + 1)
+      in
+      check_col 0
+    in
+    if row_has_duplicate then true
+    else
+      (* Check column for duplicates (excluding current cell) *)
+      let col_has_duplicate =
+        let rec check_row r =
+          if r >= 9 then false
+          else if r = row then check_row (r + 1)
+          else if grid.(r).(col) = value then true
+          else check_row (r + 1)
+        in
+        check_row 0
+      in
+      if col_has_duplicate then true
+      else
+        (* Check box for duplicates (excluding current cell) *)
+        let box_row = row / 3 in
+        let box_col = col / 3 in
+        let box_has_duplicate =
+          let rec check_box r =
+            if r > 2 then false
+            else
+              let rec check_box_col c =
+                if c > 2 then check_box (r + 1)
+                else
+                  let actual_row = (box_row * 3) + r in
+                  let actual_col = (box_col * 3) + c in
+                  if actual_row = row && actual_col = col then
+                    check_box_col (c + 1)
+                  else if grid.(actual_row).(actual_col) = value then true
+                  else check_box_col (c + 1)
+              in
+              check_box_col 0
+          in
+          check_box 0
+        in
+        box_has_duplicate
+
+(** [update_cell grid original_grid row col value] updates the cell at [row]
+    [col] to [value]. Returns a new grid with the updated cell. Allows editing
+    user-filled cells but prevents editing original (locked) cells. Validates
+    that the move doesn't create duplicates. *)
+let update_cell grid original_grid row col value =
   if row < 0 || row >= 9 || col < 0 || col >= 9 then
     raise
       (Parse_error
@@ -101,15 +268,75 @@ let update_cell grid row col value =
             (row + 1) (col + 1)));
   if value < 0 || value > 9 then
     raise (Parse_error (Printf.sprintf "Invalid value: %d (must be 0-9)" value));
-  (* Check if cell is already filled *)
-  if grid.(row).(col) <> 0 then
+  (* Check if cell is locked (was originally filled) *)
+  if is_cell_locked original_grid row col then
     raise
       (Parse_error
          (Printf.sprintf
-            "Cell at (%d, %d) already contains %d. Please pick a different \
-             cell."
-            (col + 1) (row + 1)
-            grid.(row).(col)));
+            "Cell at (%d, %d) is part of the original puzzle and cannot be \
+             changed."
+            (col + 1) (row + 1)));
+  (* Check if the move would create a duplicate *)
+  (if would_create_duplicate grid row col value then
+     (* Determine which constraint is violated for error message *)
+     let error_msg =
+       (* Check row for duplicates *)
+       let rec check_row_col c =
+         if c >= 9 then None
+         else if c <> col && grid.(row).(c) = value then
+           Some
+             (Printf.sprintf
+                "Duplicate %d in row %d (already exists at column %d)" value
+                (row + 1) (c + 1))
+         else check_row_col (c + 1)
+       in
+       match check_row_col 0 with
+       | Some msg -> msg
+       | None -> (
+           (* Check column for duplicates *)
+           let rec check_col_row r =
+             if r >= 9 then None
+             else if r <> row && grid.(r).(col) = value then
+               Some
+                 (Printf.sprintf
+                    "Duplicate %d in column %d (already exists at row %d)" value
+                    (col + 1) (r + 1))
+             else check_col_row (r + 1)
+           in
+           match check_col_row 0 with
+           | Some msg -> msg
+           | None -> (
+               (* Check box for duplicates *)
+               let box_row = row / 3 in
+               let box_col = col / 3 in
+               let rec check_box_row r =
+                 if r > 2 then None
+                 else
+                   let rec check_box_col c =
+                     if c > 2 then check_box_row (r + 1)
+                     else
+                       let actual_row = (box_row * 3) + r in
+                       let actual_col = (box_col * 3) + c in
+                       if actual_row = row && actual_col = col then
+                         check_box_col (c + 1)
+                       else if grid.(actual_row).(actual_col) = value then
+                         Some
+                           (Printf.sprintf
+                              "Duplicate %d in 3x3 box (already exists at row \
+                               %d, column %d)"
+                              value (actual_row + 1) (actual_col + 1))
+                       else check_box_col (c + 1)
+                   in
+                   check_box_col 0
+               in
+               match check_box_row 0 with
+               | Some msg -> msg
+               | None -> Printf.sprintf "Duplicate %d detected" value))
+     in
+     raise
+       (Parse_error
+          (Printf.sprintf "Cannot place %d at (%d, %d). %s" value (col + 1)
+             (row + 1) error_msg)));
   let new_grid = Array.map Array.copy grid in
   new_grid.(row).(col) <- value;
   new_grid

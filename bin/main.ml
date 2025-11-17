@@ -26,7 +26,7 @@ let parse_input input =
         (Invalid_argument
            "Invalid format. Use: <number> (<x>, <y>) or 'quit' to exit")
 
-let rec interactive_loop grid =
+let rec interactive_loop grid original_grid =
   print_string "\nEnter move (format: <number> (<x>, <y>)) or 'quit' to exit: ";
   flush stdout;
   try
@@ -41,28 +41,44 @@ let rec interactive_loop grid =
         let row = y - 1 in
         let col = x - 1 in
         try
-          let updated_grid = Sudoku.update_cell grid row col value in
+          let updated_grid =
+            Sudoku.update_cell grid original_grid row col value
+          in
           print_endline "";
           Sudoku.print_grid updated_grid;
-          interactive_loop updated_grid
+          (* Check if the game is complete and valid *)
+          if Sudoku.is_complete updated_grid then
+            if Sudoku.is_valid_sudoku updated_grid then (
+              print_endline
+                "\n Congratulations! You solved the Sudoku puzzle correctly!";
+              exit 0)
+            else (
+              print_endline
+                "\n\
+                 The board is complete, but it's not a valid Sudoku solution. \
+                 Please check for duplicates in rows, columns, or boxes.";
+              interactive_loop updated_grid original_grid)
+          else interactive_loop updated_grid original_grid
         with Sudoku.Parse_error msg ->
           prerr_endline ("Error: " ^ msg);
-          interactive_loop grid)
+          interactive_loop grid original_grid)
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
       exit 0
   | Invalid_argument msg ->
       prerr_endline ("Error: " ^ msg);
-      interactive_loop grid
+      interactive_loop grid original_grid
 
 let () =
   match Array.to_list Sys.argv |> List.tl with
   | [ path ] -> (
       try
-        let grid = path |> Sudoku.load_grid in
+        let original_grid = path |> Sudoku.load_grid in
+        (* Create a copy for the current game state *)
+        let grid = Array.map Array.copy original_grid in
         Sudoku.print_grid grid;
-        interactive_loop grid
+        interactive_loop grid original_grid
       with Sudoku.Parse_error msg ->
         prerr_endline ("Error: " ^ msg);
         exit 1)
