@@ -7,24 +7,26 @@ type cell = int
 type grid = cell array array
 
 (* A position on the board *)
-type position = { row : int; col : int }
+type position = {
+  row : int;
+  col : int;
+}
 
-let parse_error fmt =
-  Printf.ksprintf (fun msg -> raise (Parse_error msg)) fmt
+let parse_error fmt = Printf.ksprintf (fun msg -> raise (Parse_error msg)) fmt
 
 let parse_cell row col = function
   | `Int n when 0 <= n && n <= 9 -> n
   | _ ->
-      parse_error "Invalid cell at row %d, col %d. Expected integer 0–9." (row + 1)
-        (col + 1)
+      parse_error "Invalid cell at row %d, col %d. Expected integer 0–9."
+        (row + 1) (col + 1)
 
 let parse_row row_index = function
   | `List cells as row ->
       let cells_list = Yojson.Basic.Util.to_list row in
       let count = List.length cells_list in
       if count <> 9 then
-        parse_error "Row %d has %d cells; each row must contain 9 cells." (row_index + 1)
-          count;
+        parse_error "Row %d has %d cells; each row must contain 9 cells."
+          (row_index + 1) count;
       cells_list |> List.mapi (parse_cell row_index) |> Array.of_list
   | _ -> parse_error "Row %d must be a list of integers." (row_index + 1)
 
@@ -36,7 +38,8 @@ let parse_board = function
         parse_error "Board has %d rows; expected 9 rows." row_count;
       rows_list |> List.mapi parse_row |> Array.of_list
   | _ ->
-      parse_error "Board must be a list of 9 rows, each containing 9 integers (0–9)."
+      parse_error
+        "Board must be a list of 9 rows, each containing 9 integers (0–9)."
 
 let get_board_json json =
   match json with
@@ -46,10 +49,11 @@ let get_board_json json =
       | Some board -> board
       | None ->
           parse_error
-            "JSON object must contain a \"board\" field holding a 9×9 array of numbers."
-    )
+            "JSON object must contain a \"board\" field holding a 9×9 array of \
+             numbers.")
   | _ ->
-      parse_error "Expected a top-level list or an object with a \"board\" field."
+      parse_error
+        "Expected a top-level list or an object with a \"board\" field."
 
 let load_grid path =
   try
@@ -60,7 +64,9 @@ let load_grid path =
   | Yojson.Json_error msg -> raise (Parse_error ("Malformed JSON: " ^ msg))
   | Sys_error msg -> raise (Parse_error msg)
 
-let string_of_cell = function 0 -> "." | n -> string_of_int n
+let string_of_cell = function
+  | 0 -> "."
+  | n -> string_of_int n
 
 let format_grid grid =
   let buf = Buffer.create 256 in
@@ -84,3 +90,26 @@ let format_grid grid =
   Buffer.contents buf
 
 let print_grid grid = format_grid grid |> print_string
+
+(** [update_cell grid row col value] updates the cell at [row] [col] to [value].
+    Returns a new grid with the updated cell. *)
+let update_cell grid row col value =
+  if row < 0 || row >= 9 || col < 0 || col >= 9 then
+    raise
+      (Parse_error
+         (Printf.sprintf "Invalid coordinates: row %d, col %d (must be 1-9)"
+            (row + 1) (col + 1)));
+  if value < 0 || value > 9 then
+    raise (Parse_error (Printf.sprintf "Invalid value: %d (must be 0-9)" value));
+  (* Check if cell is already filled *)
+  if grid.(row).(col) <> 0 then
+    raise
+      (Parse_error
+         (Printf.sprintf
+            "Cell at (%d, %d) already contains %d. Please pick a different \
+             cell."
+            (col + 1) (row + 1)
+            grid.(row).(col)));
+  let new_grid = Array.map Array.copy grid in
+  new_grid.(row).(col) <- value;
+  new_grid
