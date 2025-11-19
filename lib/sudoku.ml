@@ -70,8 +70,8 @@ let string_of_cell = function
 
 let format_grid grid =
   let buf = Buffer.create 256 in
-  let header = "    1 2 3   4 5 6   7 8 9\n" in
-  let separator = "  +-------+-------+-------+\n" in
+  let header = "     1 2 3   4 5 6   7 8 9\n" in
+  let separator = "   +-------+-------+-------+\n" in
   Buffer.add_string buf header;
   let add_separator () = Buffer.add_string buf separator in
   let add_row r row =
