@@ -11,6 +11,13 @@ type position = {
   row : int;
   col : int;
 }
+
+(* Difficulty levels for generated puzzles *)
+type difficulty =
+  | Easy
+  | Medium
+  | Hard
+
 let parse_error fmt = Printf.ksprintf (fun msg -> raise (Parse_error msg)) fmt
 
 let parse_cell row col = function
@@ -440,6 +447,66 @@ let update_cell grid original_grid row col value =
   let new_grid = Array.map Array.copy grid in
   new_grid.(row).(col) <- value;
   new_grid
+
+(* Initialize the PRNG once for generator usage *)
+let () = Random.self_init ()
+
+let copy_grid grid = Array.map Array.copy grid
+
+let shuffle_array arr =
+  let a = Array.copy arr in
+  for i = Array.length a - 1 downto 1 do
+    let j = Random.int (i + 1) in
+    let tmp = a.(i) in
+    a.(i) <- a.(j);
+    a.(j) <- tmp
+  done;
+  a
+
+(* Generate a fully-solved grid using randomized backtracking *)
+let generate_complete_solution () =
+  let grid = Array.make_matrix 9 9 0 in
+  let positions =
+    Array.init 81 (fun i -> (i / 9, i mod 9)) |> shuffle_array
+  in
+  let rec fill idx =
+    if idx = Array.length positions then true
+    else
+      let r, c = positions.(idx) in
+      let numbers = shuffle_array [| 1; 2; 3; 4; 5; 6; 7; 8; 9 |] in
+      let rec try_number i =
+        if i = Array.length numbers then (
+          grid.(r).(c) <- 0;
+          false)
+        else
+          let n = numbers.(i) in
+          if would_create_duplicate grid r c n then try_number (i + 1)
+          else (
+            grid.(r).(c) <- n;
+            if fill (idx + 1) then true else try_number (i + 1))
+      in
+      try_number 0
+  in
+  if fill 0 then grid
+  else raise (Failure "Failed to generate a complete Sudoku solution.")
+
+let clues_for_difficulty = function
+  | Easy -> 40
+  | Medium -> 32
+  | Hard -> 25
+
+let generate difficulty =
+  let solution = generate_complete_solution () in
+  let puzzle = copy_grid solution in
+  let removals = max 0 (81 - clues_for_difficulty difficulty) in
+  let cells =
+    Array.init 81 (fun i -> (i / 9, i mod 9)) |> shuffle_array
+  in
+  for i = 0 to removals - 1 do
+    let r, c = cells.(i) in
+    puzzle.(r).(c) <- 0
+  done;
+  puzzle
 
 (** [solve grid] attempts to solve a Sudoku puzzle using backtracking. Returns
     [Ok solved_grid] if a solution is found. If the puzzle has internal

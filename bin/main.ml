@@ -1,5 +1,8 @@
 let usage () =
-  prerr_endline "Usage: sudoku <path-to-board.json>";
+  prerr_endline
+    "Usage: sudoku <path-to-board.json>\n\
+     If no path is provided, you'll be prompted to generate a puzzle \
+     (easy/medium/hard).";
   exit 1
 
 (* Parse user input in format: <number> (<x_coordinate>, <y_coordinate>) *)
@@ -24,7 +27,18 @@ let parse_input input =
     with _ ->
       raise
         (Invalid_argument
-           "Invalid format. Use: <number> (<x>, <y>) or 'quit' to exit")
+           "Invalid format. Use: <number> (<x>, <y>) or 'quit' to exit or 'clear' to clear board")
+
+let rec prompt_difficulty () =
+  print_string "Choose difficulty (easy/medium/hard): ";
+  flush stdout;
+  match String.lowercase_ascii (read_line () |> String.trim) with
+  | "easy" -> Sudoku.Easy
+  | "medium" -> Sudoku.Medium
+  | "hard" -> Sudoku.Hard
+  | _ ->
+      prerr_endline "Please enter one of: easy, medium, hard.";
+      prompt_difficulty ()
 
 let rec prompt_autocorrect () =
   print_string "Enable autocorrect mode? (y/n): ";
@@ -36,13 +50,14 @@ let rec prompt_autocorrect () =
       prerr_endline "Please answer y or n.";
       prompt_autocorrect ()
 
-let colorize_incorrect incorrect =
+let colorize_board grid incorrect =
+  let red text = "\027[31m" ^ text ^ "\027[0m" in
   fun r c text ->
-    if incorrect.(r).(c) then "\027[31m" ^ text ^ "\027[0m" else text
+    if incorrect.(r).(c) then red text else text
 
 let print_board ~autocorrect incorrect grid =
   if autocorrect then
-    Sudoku.print_grid ~colorize:(colorize_incorrect incorrect) grid
+    Sudoku.print_grid ~colorize:(colorize_board grid incorrect) grid
   else Sudoku.print_grid grid
 
 let update_incorrect incorrect solution row col value =
@@ -51,11 +66,20 @@ let update_incorrect incorrect solution row col value =
   next
 
 let rec interactive_loop grid original_grid autocorrect solution incorrect =
-  print_string "\nEnter move (format: <number> (<x>, <y>)) or 'quit' to exit: ";
+  print_string "\nEnter move: ";
   flush stdout;
   try
-    let input = read_line () in
-    match parse_input input with
+    let input = read_line () |> String.trim in
+    let lower = String.lowercase_ascii input in
+    if lower = "clear" then (
+      let reset_grid = Array.map Array.copy original_grid in
+      let incorrect_reset = Array.make_matrix 9 9 false in
+      print_endline "\nBoard reset to original puzzle.";
+      print_board ~autocorrect incorrect_reset reset_grid;
+      interactive_loop reset_grid original_grid autocorrect solution
+        incorrect_reset)
+    else
+      match parse_input input with
     | None ->
         (* quit command *)
         print_endline "Goodbye!";
@@ -123,13 +147,21 @@ let start_game initial_grid =
         false
     | false, _ -> false
   in
+  print_endline
+    "\nCommands:\n\
+     - Enter moves as: <number> (<x>, <y>)\n\
+     - Type 'clear' to reset to the original puzzle\n\
+     - Type 'quit' to exit";
   let incorrect = Array.make_matrix 9 9 false in
   print_board ~autocorrect incorrect grid;
   interactive_loop grid original_grid autocorrect solution_opt incorrect
 
 let () =
   match Array.to_list Sys.argv |> List.tl with
-  | [] -> usage ()
+  | [] ->
+      let difficulty = prompt_difficulty () in
+      let grid = Sudoku.generate difficulty in
+      start_game grid
   | [ path ] -> (
       try
         let original_grid = path |> Sudoku.load_grid in

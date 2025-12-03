@@ -10,6 +10,11 @@ type position = {
   col : int;
 }
 
+type difficulty =
+  | Easy
+  | Medium
+  | Hard
+
 val load_grid : string -> grid
 (** [load_grid path] parses a Sudoku board from the JSON file at [path]. The
     JSON is expected to be either a 9×9 array or an object with a ["board"]
@@ -22,6 +27,11 @@ val format_grid :
 
 val print_grid : ?colorize:(int -> int -> string -> string) -> grid -> unit
 (** Print a grid to stdout. *)
+
+val generate : difficulty -> grid
+(** [generate difficulty] creates a new Sudoku puzzle as a 9×9 array. The board
+    is derived from a randomly generated solved grid with cells removed based on
+    [difficulty] (easy keeps the most clues, hard the fewest). *)
 
 val update_cell : grid -> grid -> int -> int -> int -> grid
 (** [update_cell grid original_grid row col value] updates the cell at [row]
