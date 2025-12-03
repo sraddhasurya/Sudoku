@@ -442,6 +442,36 @@ let detects_unsolvable_board _ctx =
       | Error msg ->
           assert_bool "Returns a helpful message" (String.length msg > 0))
 
+let generated_board_is_valid _ctx =
+  let rng = Random.State.make [| 42 |] in
+  match Sudoku.generate_full_grid ~rng () with
+  | Error msg -> assert_failure ("Generation failed: " ^ msg)
+  | Ok grid ->
+      assert_bool "Generated board is complete" (Sudoku.is_complete grid);
+      assert_bool "Generated board is a valid solution"
+        (Sudoku.is_valid_sudoku grid)
+
+let generated_puzzle_has_holes_and_is_solvable _ctx =
+  let rng = Random.State.make [| 7 |] in
+  let clues = 30 in
+  match Sudoku.generate_puzzle ~rng ~clues () with
+  | Error msg -> assert_failure ("Puzzle generation failed: " ^ msg)
+  | Ok puzzle ->
+      let filled =
+        Array.fold_left
+          (fun acc row ->
+            acc
+            + Array.fold_left (fun acc v -> if v <> 0 then acc + 1 else acc) 0
+                row)
+          0 puzzle
+      in
+      assert_bool "Puzzle not complete (has blanks)" (not (Sudoku.is_complete puzzle));
+      assert_bool "Respects clue target" (filled >= clues);
+      (match Sudoku.solve puzzle with
+      | Error msg -> assert_failure ("Generated puzzle not solvable: " ^ msg)
+      | Ok solved ->
+          assert_bool "Solution is valid" (Sudoku.is_valid_sudoku solved))
+
 (* Tests for original cell protection *)
 let update_cell_protect_original_cell_all_values _ctx =
   (* Test that original cells with any value 1-9 are all protected *)
@@ -856,6 +886,9 @@ let suite =
          >:: update_cell_prevent_multiple_duplicates;
          "solves_sample_board" >:: solves_sample_board;
          "detects_unsolvable_board" >:: detects_unsolvable_board;
+         "generated_board_is_valid" >:: generated_board_is_valid;
+         "generated_puzzle_has_holes_and_is_solvable"
+         >:: generated_puzzle_has_holes_and_is_solvable;
          "user_wins_game" >:: user_wins_game;
          "user_wins_with_edits" >:: user_wins_with_edits;
        ]

@@ -45,6 +45,19 @@ val solve : grid -> (grid, string) result
     [Ok solution] if the puzzle can be solved, or [Error msg] if the board has
     conflicts or no solution exists. The input grid is left unchanged. *)
 
+val generate_full_grid : ?rng:Random.State.t -> unit -> (grid, string) result
+(** [generate_full_grid ()] constructs a fully-solved Sudoku grid using
+    backtracking with randomized digit order. An optional [rng] can be provided
+    to make generation deterministic for testing. Returns [Ok grid] when
+    successful. *)
+
+val generate_puzzle :
+  ?rng:Random.State.t -> ?clues:int -> unit -> (grid, string) result
+(** [generate_puzzle ()] returns a Sudoku puzzle (with zeros for blanks) that
+    is guaranteed solvable by the built-in solver. [clues] controls how many
+    filled cells remain (default 35). [rng] can be provided for deterministic
+    output in tests. *)
+
 val is_valid_sudoku : grid -> bool
 (** [is_valid_sudoku grid] checks if [grid] is a valid completed Sudoku
     solution. Returns true if:

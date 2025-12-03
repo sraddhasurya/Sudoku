@@ -5,6 +5,21 @@ let usage () =
      (easy/medium/hard).";
   exit 1
 
+type difficulty = Easy | Medium | Hard
+
+let clues_for = function Easy -> 42 | Medium -> 34 | Hard -> 26
+
+let rec prompt_difficulty () =
+  print_string "Choose difficulty (easy / medium / hard): ";
+  flush stdout;
+  match read_line () |> String.trim |> String.lowercase_ascii with
+  | "easy" | "e" -> Easy
+  | "medium" | "m" -> Medium
+  | "hard" | "h" -> Hard
+  | _ ->
+      prerr_endline "Please enter 'easy', 'medium', or 'hard'.";
+      prompt_difficulty ()
+
 (* Parse user input in format: <number> (<x_coordinate>, <y_coordinate>) *)
 let parse_input input =
   let input = String.trim input in

@@ -501,3 +501,86 @@ let solve grid =
     in
     if backtrack () then Ok working
     else Error "Unsolvable: no valid solution exists for this board."
+
+(** Fisher–Yates shuffle of digits 1-9 to add randomness to generation. *)
+let shuffled_digits rng =
+  let arr = [| 1; 2; 3; 4; 5; 6; 7; 8; 9 |] in
+  for i = Array.length arr - 1 downto 1 do
+    let j = Random.State.int rng (i + 1) in
+    let tmp = arr.(i) in
+    arr.(i) <- arr.(j);
+    arr.(j) <- tmp
+  done;
+  arr
+
+(** [generate_full_grid ?rng ()] constructs a fully solved Sudoku board by
+    filling an empty grid using backtracking with randomized digit order. *)
+let generate_full_grid ?rng () =
+  let rng = match rng with Some r -> r | None -> Random.State.make_self_init () in
+  let grid = Array.make_matrix 9 9 0 in
+  let rec find_empty r c =
+    if r = 9 then None
+    else if c = 9 then find_empty (r + 1) 0
+    else if grid.(r).(c) = 0 then Some (r, c)
+    else find_empty r (c + 1)
+  in
+  let rec try_values r c digits idx =
+    if idx = Array.length digits then false
+    else
+      let value = digits.(idx) in
+      if would_create_duplicate grid r c value then
+        try_values r c digits (idx + 1)
+      else (
+        grid.(r).(c) <- value;
+        if backtrack () then true
+        else (
+          grid.(r).(c) <- 0;
+          try_values r c digits (idx + 1)))
+  and backtrack () =
+    match find_empty 0 0 with
+    | None -> true
+    | Some (r, c) ->
+        let digits = shuffled_digits rng in
+        try_values r c digits 0
+  in
+  if backtrack () then Ok grid
+  else Error "Generation failed: could not construct a full grid."
+
+let shuffled_positions rng =
+  let arr = Array.init 81 (fun i -> (i / 9, i mod 9)) in
+  for i = Array.length arr - 1 downto 1 do
+    let j = Random.State.int rng (i + 1) in
+    let tmp = arr.(i) in
+    arr.(i) <- arr.(j);
+    arr.(j) <- tmp
+  done;
+  arr
+
+let generate_puzzle ?rng ?(clues = 35) () =
+  if clues < 17 || clues > 81 then
+    Error "Clue count must be between 17 and 81 for a standard 9x9 Sudoku."
+  else
+    let rng = match rng with Some r -> r | None -> Random.State.make_self_init () in
+    match generate_full_grid ~rng () with
+    | Error msg -> Error msg
+    | Ok solution ->
+        let puzzle = Array.map Array.copy solution in
+        let positions = shuffled_positions rng in
+        let remaining = ref 81 in
+        let rec remove idx =
+          if !remaining <= clues then Ok puzzle
+          else if idx >= Array.length positions then Ok puzzle
+          else
+            let r, c = positions.(idx) in
+            let original = puzzle.(r).(c) in
+            puzzle.(r).(c) <- 0;
+            decr remaining;
+            (* Ensure the puzzle is still solvable *)
+            match solve puzzle with
+            | Ok _ -> remove (idx + 1)
+            | Error _ ->
+                puzzle.(r).(c) <- original;
+                incr remaining;
+                remove (idx + 1)
+        in
+        remove 0
