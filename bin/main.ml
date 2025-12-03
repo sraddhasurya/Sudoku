@@ -65,8 +65,10 @@ let update_incorrect incorrect solution row col value =
   next.(row).(col) <- value <> 0 && value <> solution.(row).(col);
   next
 
-let rec interactive_loop grid original_grid autocorrect solution incorrect =
-  print_string "\nEnter move: ";
+let rec interactive_loop grid original_grid autocorrect solution incorrect
+    mistakes =
+  print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes);
+  print_string "Enter move: ";
   flush stdout;
   try
     let input = read_line () |> String.trim in
@@ -77,7 +79,7 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect =
       print_endline "\nBoard reset to original puzzle.";
       print_board ~autocorrect incorrect_reset reset_grid;
       interactive_loop reset_grid original_grid autocorrect solution
-        incorrect_reset)
+        incorrect_reset mistakes)
     else
       match parse_input input with
     | None ->
@@ -97,8 +99,23 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect =
             | true, Some sol -> update_incorrect incorrect sol row col value
             | _ -> incorrect
           in
+          let mistake_inc =
+            match solution with
+            | Some sol -> value <> 0 && value <> sol.(row).(col)
+            | None -> false
+          in
+          let mistakes' = mistakes + (if mistake_inc then 1 else 0) in
           print_endline "";
           print_board ~autocorrect incorrect' updated_grid;
+          if mistakes' >= 3 then (
+            print_endline
+              "\nYou ran out of tries. The correct board is:\n";
+            (match solution with
+            | Some sol -> Sudoku.print_grid sol
+            | None ->
+                print_endline
+                  "Solver could not produce a solution to display.");
+            exit 0);
           (* Check if the game is complete and valid *)
           if Sudoku.is_complete updated_grid then
             if Sudoku.is_valid_sudoku updated_grid then (
@@ -111,13 +128,14 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect =
                  The board is complete, but it's not a valid Sudoku solution. \
                  Please check for duplicates in rows, columns, or boxes.";
               interactive_loop updated_grid original_grid autocorrect solution
-                incorrect')
+                incorrect' mistakes')
           else
             interactive_loop updated_grid original_grid autocorrect solution
-              incorrect'
+              incorrect' mistakes'
         with Sudoku.Parse_error msg ->
           prerr_endline ("Error: " ^ msg);
-          interactive_loop grid original_grid autocorrect solution incorrect)
+          interactive_loop grid original_grid autocorrect solution incorrect
+            mistakes)
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
@@ -125,6 +143,7 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect =
   | Invalid_argument msg ->
       prerr_endline ("Error: " ^ msg);
       interactive_loop grid original_grid autocorrect solution incorrect
+        mistakes
 
 let start_game initial_grid =
   let original_grid = Array.map Array.copy initial_grid in
@@ -151,10 +170,11 @@ let start_game initial_grid =
     "\nCommands:\n\
      - Enter moves as: <number> (<x>, <y>)\n\
      - Type 'clear' to reset to the original puzzle\n\
-     - Type 'quit' to exit";
+     - Type 'quit' to exit\n\
+     You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
   print_board ~autocorrect incorrect grid;
-  interactive_loop grid original_grid autocorrect solution_opt incorrect
+  interactive_loop grid original_grid autocorrect solution_opt incorrect 0
 
 let () =
   match Array.to_list Sys.argv |> List.tl with
