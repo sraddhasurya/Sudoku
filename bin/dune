@@ -1,4 +1,4 @@
 (executable
  (public_name sudoku)
  (name main)
- (libraries sudoku str))
+ (libraries sudoku str unix))

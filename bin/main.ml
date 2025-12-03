@@ -1,11 +1,14 @@
 let usage () =
-  prerr_endline
-    "Usage: sudoku <path-to-board.json>\n\
-     If no path is provided, you'll be prompted to generate a puzzle \
-     (easy/medium/hard).";
+  prerr_endline "Usage: sudoku <path-to-board.json>";
   exit 1
 
-(* Parse user input in format: <number> (<x_coordinate>, <y_coordinate>) *)
+let format_elapsed start_time =
+  let elapsed = Unix.gettimeofday () -. start_time in
+  let minutes = int_of_float (elapsed /. 60.) in
+  let seconds = int_of_float (elapsed -. float_of_int (minutes * 60)) in
+  Printf.sprintf "%d:%02d" minutes seconds
+
+(* Parse user input in format: <number> (<row>, <col>) *)
 let parse_input input =
   let input = String.trim input in
   (* Check for exit commands *)
@@ -20,40 +23,34 @@ let parse_input input =
       in
       if Str.string_match regexp input 0 then
         let value = int_of_string (Str.matched_group 1 input) in
-        let x = int_of_string (Str.matched_group 2 input) in
-        let y = int_of_string (Str.matched_group 3 input) in
-        Some (value, x, y)
+        let row = int_of_string (Str.matched_group 2 input) in
+        let col = int_of_string (Str.matched_group 3 input) in
+        Some (value, row, col)
       else raise (Invalid_argument "Invalid format")
     with _ ->
       raise
         (Invalid_argument
-           "Invalid format. Use: <number> (<x>, <y>) or 'quit' to exit or 'clear' to clear board")
-
-let rec prompt_difficulty () =
-  print_string "Choose difficulty (easy/medium/hard): ";
-  flush stdout;
-  match String.lowercase_ascii (read_line () |> String.trim) with
-  | "easy" -> Sudoku.Easy
-  | "medium" -> Sudoku.Medium
-  | "hard" -> Sudoku.Hard
-  | _ ->
-      prerr_endline "Please enter one of: easy, medium, hard.";
-      prompt_difficulty ()
+           "Invalid format. Use: <number> (<row>, <col>) or 'quit' to exit or \
+            'clear' to clear board")
 
 let rec prompt_autocorrect () =
   print_string "Enable autocorrect mode? (y/n): ";
   flush stdout;
-  match String.lowercase_ascii (String.trim (read_line ())) with
-  | "y" | "yes" -> true
-  | "n" | "no" -> false
-  | _ ->
-      prerr_endline "Please answer y or n.";
-      prompt_autocorrect ()
+  match read_line () with
+  | exception End_of_file ->
+      prerr_endline "\nNo input detected. Starting without autocorrect.";
+      false
+  | line -> (
+      match String.lowercase_ascii (String.trim line) with
+      | "y" | "yes" -> true
+      | "n" | "no" -> false
+      | _ ->
+          prerr_endline "Please answer y or n.";
+          prompt_autocorrect ())
 
 let colorize_board grid incorrect =
   let red text = "\027[31m" ^ text ^ "\027[0m" in
-  fun r c text ->
-    if incorrect.(r).(c) then red text else text
+  fun r c text -> if incorrect.(r).(c) then red text else text
 
 let print_board ~autocorrect incorrect grid =
   if autocorrect then
@@ -65,8 +62,27 @@ let update_incorrect incorrect solution row col value =
   next.(row).(col) <- value <> 0 && value <> solution.(row).(col);
   next
 
-let rec interactive_loop grid original_grid autocorrect solution incorrect
-    mistakes =
+let rec handle_completion grid original_grid autocorrect solution incorrect
+    mistakes start_time =
+  if Sudoku.is_complete grid then
+    if Sudoku.is_valid_sudoku grid then (
+      print_endline
+        "\n Congratulations! You solved the Sudoku puzzle correctly!";
+      Printf.printf "Time: %s\n%!" (format_elapsed start_time);
+      exit 0)
+    else (
+      print_endline
+        "\n\
+         The board is complete, but it's not a valid Sudoku solution. Please \
+         check for duplicates in rows, columns, or boxes.";
+      interactive_loop grid original_grid autocorrect solution incorrect
+        mistakes start_time)
+  else
+    interactive_loop grid original_grid autocorrect solution incorrect mistakes
+      start_time
+
+and interactive_loop grid original_grid autocorrect solution incorrect mistakes
+    start_time =
   print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes);
   print_string "Enter move: ";
   flush stdout;
@@ -79,12 +95,13 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect
       print_endline "\nBoard reset to original puzzle.";
       print_board ~autocorrect incorrect_reset reset_grid;
       interactive_loop reset_grid original_grid autocorrect solution
-        incorrect_reset mistakes)
+        incorrect_reset mistakes start_time)
     else
       match parse_input input with
     | None ->
         (* quit command *)
         print_endline "Goodbye!";
+        Printf.printf "Time: %s\n%!" (format_elapsed start_time);
         exit 0
     | Some (value, x, y) -> (
         (* Convert 1-indexed coordinates to 0-indexed *)
@@ -115,12 +132,14 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect
             | None ->
                 print_endline
                   "Solver could not produce a solution to display.");
+            Printf.printf "Time: %s\n%!" (format_elapsed start_time);
             exit 0);
           (* Check if the game is complete and valid *)
           if Sudoku.is_complete updated_grid then
             if Sudoku.is_valid_sudoku updated_grid then (
               print_endline
                 "\n Congratulations! You solved the Sudoku puzzle correctly!";
+              Printf.printf "Time: %s\n%!" (format_elapsed start_time);
               exit 0)
             else (
               print_endline
@@ -128,22 +147,23 @@ let rec interactive_loop grid original_grid autocorrect solution incorrect
                  The board is complete, but it's not a valid Sudoku solution. \
                  Please check for duplicates in rows, columns, or boxes.";
               interactive_loop updated_grid original_grid autocorrect solution
-                incorrect' mistakes')
+                incorrect' mistakes' start_time)
           else
             interactive_loop updated_grid original_grid autocorrect solution
-              incorrect' mistakes'
+              incorrect' mistakes' start_time
         with Sudoku.Parse_error msg ->
           prerr_endline ("Error: " ^ msg);
           interactive_loop grid original_grid autocorrect solution incorrect
-            mistakes)
+            mistakes start_time)
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
+      Printf.printf "Time: %s\n%!" (format_elapsed start_time);
       exit 0
   | Invalid_argument msg ->
       prerr_endline ("Error: " ^ msg);
       interactive_loop grid original_grid autocorrect solution incorrect
-        mistakes
+        mistakes start_time
 
 let start_game initial_grid =
   let original_grid = Array.map Array.copy initial_grid in
@@ -167,21 +187,21 @@ let start_game initial_grid =
     | false, _ -> false
   in
   print_endline
-    "\nCommands:\n\
-     - Enter moves as: <number> (<x>, <y>)\n\
+    "\n\
+     Commands:\n\
+     - Enter moves as: <number> (<row>, <col>)\n\
      - Type 'clear' to reset to the original puzzle\n\
      - Type 'quit' to exit\n\
      You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
+  let start_time = Unix.gettimeofday () in
   print_board ~autocorrect incorrect grid;
-  interactive_loop grid original_grid autocorrect solution_opt incorrect 0
+  handle_completion grid original_grid autocorrect solution_opt incorrect 0
+    start_time
 
 let () =
   match Array.to_list Sys.argv |> List.tl with
-  | [] ->
-      let difficulty = prompt_difficulty () in
-      let grid = Sudoku.generate difficulty in
-      start_game grid
+  | [] -> usage ()
   | [ path ] -> (
       try
         let original_grid = path |> Sudoku.load_grid in
