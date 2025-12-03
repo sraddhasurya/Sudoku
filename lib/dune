@@ -1,3 +1,5 @@
 (library
  (name sudoku)
- (libraries yojson))
+ (libraries yojson)
+ (instrumentation
+  (backend bisect_ppx)))
