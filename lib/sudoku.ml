@@ -11,13 +11,6 @@ type position = {
   row : int;
   col : int;
 }
-
-(* Difficulty levels for generated puzzles *)
-type difficulty =
-  | Easy
-  | Medium
-  | Hard
-
 let parse_error fmt = Printf.ksprintf (fun msg -> raise (Parse_error msg)) fmt
 
 let parse_cell row col = function
@@ -322,6 +315,47 @@ let would_create_duplicate grid row col value =
         in
         box_has_duplicate
 
+(* Return the list of candidate digits that can legally be placed at [row, col]
+   given the current grid state. *)
+let candidates grid row col =
+  let rec gather value acc =
+    if value = 0 then acc
+    else if would_create_duplicate grid row col value then gather (value - 1) acc
+    else gather (value - 1) (value :: acc)
+  in
+  gather 9 [] |> Array.of_list
+
+(* Find the empty cell with the fewest legal candidates, returning its
+   coordinates and the candidate array. If the board is complete, returns
+   [None]. *)
+let best_empty_cell_with_candidates ?rng grid =
+  let best = ref None in
+  for r = 0 to 8 do
+    for c = 0 to 8 do
+      if grid.(r).(c) = 0 then
+        let cand = candidates grid r c in
+        match !best with
+        | None -> best := Some (r, c, cand)
+        | Some (_, _, prev) ->
+            if Array.length cand < Array.length prev then
+              best := Some (r, c, cand)
+    done
+  done;
+  match !best with
+  | None -> None
+  | Some (r, c, cand) -> (
+      match rng with
+      | None -> Some (r, c, cand)
+      | Some rng_state ->
+          (* Shuffle candidate order to add randomness for generation. *)
+          for i = Array.length cand - 1 downto 1 do
+            let j = Random.State.int rng_state (i + 1) in
+            let tmp = cand.(i) in
+            cand.(i) <- cand.(j);
+            cand.(j) <- tmp
+          done;
+          Some (r, c, cand))
+
 (** [update_cell grid original_grid row col value] updates the cell at [row]
     [col] to [value]. Returns a new grid with the updated cell. Allows editing
     user-filled cells but prevents editing original (locked) cells. Validates
@@ -407,67 +441,6 @@ let update_cell grid original_grid row col value =
   new_grid.(row).(col) <- value;
   new_grid
 
-(* Initialize the PRNG once for generator usage *)
-let () = Random.self_init ()
-
-let copy_grid grid = Array.map Array.copy grid
-
-let shuffle_array arr =
-  let a = Array.copy arr in
-  for i = Array.length a - 1 downto 1 do
-    let j = Random.int (i + 1) in
-    let tmp = a.(i) in
-    a.(i) <- a.(j);
-    a.(j) <- tmp
-  done;
-  a
-
-(* Generate a fully-solved grid using randomized backtracking *)
-let generate_complete_solution () =
-  let grid = Array.make_matrix 9 9 0 in
-  let positions =
-    Array.init 81 (fun i -> (i / 9, i mod 9)) |> shuffle_array
-  in
-  let rec fill idx =
-    if idx = Array.length positions then true
-    else
-      let r, c = positions.(idx) in
-      let numbers = shuffle_array [| 1; 2; 3; 4; 5; 6; 7; 8; 9 |] in
-      let rec try_number i =
-        if i = Array.length numbers then (
-          grid.(r).(c) <- 0;
-          false)
-        else
-          let n = numbers.(i) in
-          if would_create_duplicate grid r c n then try_number (i + 1)
-          else (
-            grid.(r).(c) <- n;
-            if fill (idx + 1) then true
-            else try_number (i + 1))
-      in
-      try_number 0
-  in
-  if fill 0 then grid
-  else raise (Failure "Failed to generate a complete Sudoku solution.")
-
-let clues_for_difficulty = function
-  | Easy -> 40
-  | Medium -> 32
-  | Hard -> 25
-
-let generate difficulty =
-  let solution = generate_complete_solution () in
-  let puzzle = copy_grid solution in
-  let removals = max 0 (81 - clues_for_difficulty difficulty) in
-  let cells =
-    Array.init 81 (fun i -> (i / 9, i mod 9)) |> shuffle_array
-  in
-  for i = 0 to removals - 1 do
-    let r, c = cells.(i) in
-    puzzle.(r).(c) <- 0
-  done;
-  puzzle
-
 (** [solve grid] attempts to solve a Sudoku puzzle using backtracking. Returns
     [Ok solved_grid] if a solution is found. If the puzzle has internal
     conflicts or no solution exists, returns [Error msg]. The input [grid] is
@@ -478,109 +451,23 @@ let solve grid =
     Error "Unsolvable: the initial board contains conflicts."
   else
     let working = Array.map Array.copy grid in
-    let rec find_empty r c =
-      if r = 9 then None
-      else if c = 9 then find_empty (r + 1) 0
-      else if working.(r).(c) = 0 then Some (r, c)
-      else find_empty r (c + 1)
-    in
-    let rec try_value r c value =
-      if value > 9 then false
-      else if would_create_duplicate working r c value then
-        try_value r c (value + 1)
-      else (
-        working.(r).(c) <- value;
-        if backtrack () then true
-        else (
-          working.(r).(c) <- 0;
-          try_value r c (value + 1)))
-    and backtrack () =
-      match find_empty 0 0 with
+    let rec backtrack () =
+      match best_empty_cell_with_candidates working with
       | None -> true
-      | Some (r, c) -> try_value r c 1
-    in
-    if backtrack () then Ok working
-    else Error "Unsolvable: no valid solution exists for this board."
-
-(** Fisher–Yates shuffle of digits 1-9 to add randomness to generation. *)
-let shuffled_digits rng =
-  let arr = [| 1; 2; 3; 4; 5; 6; 7; 8; 9 |] in
-  for i = Array.length arr - 1 downto 1 do
-    let j = Random.State.int rng (i + 1) in
-    let tmp = arr.(i) in
-    arr.(i) <- arr.(j);
-    arr.(j) <- tmp
-  done;
-  arr
-
-(** [generate_full_grid ?rng ()] constructs a fully solved Sudoku board by
-    filling an empty grid using backtracking with randomized digit order. *)
-let generate_full_grid ?rng () =
-  let rng = match rng with Some r -> r | None -> Random.State.make_self_init () in
-  let grid = Array.make_matrix 9 9 0 in
-  let rec find_empty r c =
-    if r = 9 then None
-    else if c = 9 then find_empty (r + 1) 0
-    else if grid.(r).(c) = 0 then Some (r, c)
-    else find_empty r (c + 1)
-  in
-  let rec try_values r c digits idx =
-    if idx = Array.length digits then false
-    else
-      let value = digits.(idx) in
-      if would_create_duplicate grid r c value then
-        try_values r c digits (idx + 1)
-      else (
-        grid.(r).(c) <- value;
-        if backtrack () then true
-        else (
-          grid.(r).(c) <- 0;
-          try_values r c digits (idx + 1)))
-  and backtrack () =
-    match find_empty 0 0 with
-    | None -> true
-    | Some (r, c) ->
-        let digits = shuffled_digits rng in
-        try_values r c digits 0
-  in
-  if backtrack () then Ok grid
-  else Error "Generation failed: could not construct a full grid."
-
-let shuffled_positions rng =
-  let arr = Array.init 81 (fun i -> (i / 9, i mod 9)) in
-  for i = Array.length arr - 1 downto 1 do
-    let j = Random.State.int rng (i + 1) in
-    let tmp = arr.(i) in
-    arr.(i) <- arr.(j);
-    arr.(j) <- tmp
-  done;
-  arr
-
-let generate_puzzle ?rng ?(clues = 35) () =
-  if clues < 17 || clues > 81 then
-    Error "Clue count must be between 17 and 81 for a standard 9x9 Sudoku."
-  else
-    let rng = match rng with Some r -> r | None -> Random.State.make_self_init () in
-    match generate_full_grid ~rng () with
-    | Error msg -> Error msg
-    | Ok solution ->
-        let puzzle = Array.map Array.copy solution in
-        let positions = shuffled_positions rng in
-        let remaining = ref 81 in
-        let rec remove idx =
-          if !remaining <= clues then Ok puzzle
-          else if idx >= Array.length positions then Ok puzzle
+      | Some (r, c, cand) ->
+          if Array.length cand = 0 then false
           else
-            let r, c = positions.(idx) in
-            let original = puzzle.(r).(c) in
-            puzzle.(r).(c) <- 0;
-            decr remaining;
-            (* Ensure the puzzle is still solvable *)
-            match solve puzzle with
-            | Ok _ -> remove (idx + 1)
-            | Error _ ->
-                puzzle.(r).(c) <- original;
-                incr remaining;
-                remove (idx + 1)
-        in
-        remove 0
+            let rec try_idx i =
+              if i = Array.length cand then false
+              else
+                let v = cand.(i) in
+                working.(r).(c) <- v;
+                if backtrack () then true
+                else (
+                  working.(r).(c) <- 0;
+                  try_idx (i + 1))
+            in
+            try_idx 0
+  in
+  if backtrack () then Ok working
+  else Error "Unsolvable: no valid solution exists for this board."

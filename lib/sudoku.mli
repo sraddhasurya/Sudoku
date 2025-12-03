@@ -10,11 +10,6 @@ type position = {
   col : int;
 }
 
-type difficulty =
-  | Easy
-  | Medium
-  | Hard
-
 val load_grid : string -> grid
 (** [load_grid path] parses a Sudoku board from the JSON file at [path]. The
     JSON is expected to be either a 9×9 array or an object with a ["board"]
@@ -28,11 +23,6 @@ val format_grid :
 val print_grid : ?colorize:(int -> int -> string -> string) -> grid -> unit
 (** Print a grid to stdout. *)
 
-val generate : difficulty -> grid
-(** [generate difficulty] creates a new Sudoku puzzle as a 9×9 array. The board
-    is derived from a randomly generated solved grid with cells removed based on
-    [difficulty] (easy keeps the most clues, hard the fewest). *)
-
 val update_cell : grid -> grid -> int -> int -> int -> grid
 (** [update_cell grid original_grid row col value] updates the cell at [row]
     [col] (0-indexed) to [value] (0-9). Returns a new grid with the updated
@@ -44,19 +34,6 @@ val solve : grid -> (grid, string) result
 (** [solve grid] attempts to solve a Sudoku puzzle using backtracking. Returns
     [Ok solution] if the puzzle can be solved, or [Error msg] if the board has
     conflicts or no solution exists. The input grid is left unchanged. *)
-
-val generate_full_grid : ?rng:Random.State.t -> unit -> (grid, string) result
-(** [generate_full_grid ()] constructs a fully-solved Sudoku grid using
-    backtracking with randomized digit order. An optional [rng] can be provided
-    to make generation deterministic for testing. Returns [Ok grid] when
-    successful. *)
-
-val generate_puzzle :
-  ?rng:Random.State.t -> ?clues:int -> unit -> (grid, string) result
-(** [generate_puzzle ()] returns a Sudoku puzzle (with zeros for blanks) that
-    is guaranteed solvable by the built-in solver. [clues] controls how many
-    filled cells remain (default 35). [rng] can be provided for deterministic
-    output in tests. *)
 
 val is_valid_sudoku : grid -> bool
 (** [is_valid_sudoku grid] checks if [grid] is a valid completed Sudoku

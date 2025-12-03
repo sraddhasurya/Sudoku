@@ -1,24 +1,6 @@
 let usage () =
-  prerr_endline
-    "Usage: sudoku <path-to-board.json>\n\
-     If no path is provided, you'll be prompted to generate a puzzle \
-     (easy/medium/hard).";
+  prerr_endline "Usage: sudoku <path-to-board.json>";
   exit 1
-
-type difficulty = Easy | Medium | Hard
-
-let clues_for = function Easy -> 42 | Medium -> 34 | Hard -> 26
-
-let rec prompt_difficulty () =
-  print_string "Choose difficulty (easy / medium / hard): ";
-  flush stdout;
-  match read_line () |> String.trim |> String.lowercase_ascii with
-  | "easy" | "e" -> Easy
-  | "medium" | "m" -> Medium
-  | "hard" | "h" -> Hard
-  | _ ->
-      prerr_endline "Please enter 'easy', 'medium', or 'hard'.";
-      prompt_difficulty ()
 
 (* Parse user input in format: <number> (<x_coordinate>, <y_coordinate>) *)
 let parse_input input =
@@ -43,17 +25,6 @@ let parse_input input =
       raise
         (Invalid_argument
            "Invalid format. Use: <number> (<x>, <y>) or 'quit' to exit")
-
-let rec prompt_difficulty () =
-  print_string "Choose difficulty (easy/medium/hard): ";
-  flush stdout;
-  match String.lowercase_ascii (read_line () |> String.trim) with
-  | "easy" -> Sudoku.Easy
-  | "medium" -> Sudoku.Medium
-  | "hard" -> Sudoku.Hard
-  | _ ->
-      prerr_endline "Please enter one of: easy, medium, hard.";
-      prompt_difficulty ()
 
 let rec prompt_autocorrect () =
   print_string "Enable autocorrect mode? (y/n): ";
@@ -158,10 +129,7 @@ let start_game initial_grid =
 
 let () =
   match Array.to_list Sys.argv |> List.tl with
-  | [] ->
-      let difficulty = prompt_difficulty () in
-      let grid = Sudoku.generate difficulty in
-      start_game grid
+  | [] -> usage ()
   | [ path ] -> (
       try
         let original_grid = path |> Sudoku.load_grid in
