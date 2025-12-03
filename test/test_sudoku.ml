@@ -27,6 +27,34 @@ let sample_json =
 ]
 |}
 
+let solved_sample_grid =
+  [|
+    [| 5; 3; 4; 6; 7; 8; 9; 1; 2 |];
+    [| 6; 7; 2; 1; 9; 5; 3; 4; 8 |];
+    [| 1; 9; 8; 3; 4; 2; 5; 6; 7 |];
+    [| 8; 5; 9; 7; 6; 1; 4; 2; 3 |];
+    [| 4; 2; 6; 8; 5; 3; 7; 9; 1 |];
+    [| 7; 1; 3; 9; 2; 4; 8; 5; 6 |];
+    [| 9; 6; 1; 5; 3; 7; 2; 8; 4 |];
+    [| 2; 8; 7; 4; 1; 9; 6; 3; 5 |];
+    [| 3; 4; 5; 2; 8; 6; 1; 7; 9 |];
+  |]
+
+let unsolvable_json =
+  {|
+[
+  [5, 5, 0, 0, 7, 0, 0, 0, 0],
+  [6, 0, 0, 1, 9, 5, 0, 0, 0],
+  [0, 9, 8, 0, 0, 0, 0, 6, 0],
+  [8, 0, 0, 0, 6, 0, 0, 0, 3],
+  [4, 0, 0, 8, 0, 3, 0, 0, 1],
+  [7, 0, 0, 0, 2, 0, 0, 0, 6],
+  [0, 6, 0, 0, 0, 0, 2, 8, 0],
+  [0, 0, 0, 4, 1, 9, 0, 0, 5],
+  [0, 0, 0, 0, 8, 0, 0, 7, 9]
+]
+|}
+
 let valid_board _ctx =
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
@@ -392,6 +420,27 @@ let board_with_value_below_range _ctx =
       let grid = Sudoku.load_grid path in
       assert_bool "Board with zero value not valid"
         (not (Sudoku.is_valid_sudoku grid)))
+
+(* Solver tests *)
+let solves_sample_board _ctx =
+  with_temp_file sample_json (fun path ->
+      let grid = Sudoku.load_grid path in
+      match Sudoku.solve grid with
+      | Error msg ->
+          assert_failure ("Expected a solution, got error: " ^ msg)
+      | Ok solved ->
+          assert_bool "Solution should be valid" (Sudoku.is_valid_sudoku solved);
+          (* Input grid remains unchanged *)
+          assert_equal 0 grid.(0).(2);
+          assert_equal solved_sample_grid solved)
+
+let detects_unsolvable_board _ctx =
+  with_temp_file unsolvable_json (fun path ->
+      let grid = Sudoku.load_grid path in
+      match Sudoku.solve grid with
+      | Ok _ -> assert_failure "Expected unsolvable board to fail"
+      | Error msg ->
+          assert_bool "Returns a helpful message" (String.length msg > 0))
 
 (* Tests for original cell protection *)
 let update_cell_protect_original_cell_all_values _ctx =
@@ -805,6 +854,8 @@ let suite =
          >:: update_cell_allow_clearing_even_with_duplicates;
          "update_cell_prevent_multiple_duplicates"
          >:: update_cell_prevent_multiple_duplicates;
+         "solves_sample_board" >:: solves_sample_board;
+         "detects_unsolvable_board" >:: detects_unsolvable_board;
          "user_wins_game" >:: user_wins_game;
          "user_wins_with_edits" >:: user_wins_with_edits;
        ]

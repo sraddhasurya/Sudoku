@@ -202,6 +202,63 @@ let is_valid_sudoku grid =
     filled in the initial board. *)
 let is_cell_locked original_grid row col = original_grid.(row).(col) <> 0
 
+(** [is_consistent grid] checks that the current (possibly incomplete) grid has
+    no duplicate non-zero values in any row, column, or 3x3 box. This is used as
+    a quick fail-fast before attempting to solve. *)
+let is_consistent grid =
+  let check_unit cells =
+    let seen = Array.make 10 false in
+    let rec loop i =
+      if i = Array.length cells then true
+      else
+        let v = cells.(i) in
+        if v = 0 then loop (i + 1)
+        else if v < 1 || v > 9 then false
+        else if seen.(v) then false
+        else (
+          seen.(v) <- true;
+          loop (i + 1))
+    in
+    loop 0
+  in
+  let rows_ok =
+    let rec check_row r =
+      if r = 9 then true
+      else if check_unit grid.(r) then check_row (r + 1)
+      else false
+    in
+    check_row 0
+  in
+  if not rows_ok then false
+  else
+    let cols_ok =
+      let rec check_col c =
+        if c = 9 then true
+        else
+          let col = Array.init 9 (fun r -> grid.(r).(c)) in
+          if check_unit col then check_col (c + 1) else false
+      in
+      check_col 0
+    in
+    if not cols_ok then false
+    else
+      let boxes_ok =
+        let rec check_box br bc =
+          if br = 3 then true
+          else if bc = 3 then check_box (br + 1) 0
+          else
+            let box =
+              Array.init 9 (fun i ->
+                  let r = (br * 3) + (i / 3) in
+                  let c = (bc * 3) + (i mod 3) in
+                  grid.(r).(c))
+            in
+            if check_unit box then check_box br (bc + 1) else false
+        in
+        check_box 0 0
+      in
+      boxes_ok
+
 (** [would_create_duplicate grid row col value] checks if placing [value] at
     [row] [col] would create a duplicate in the row, column, or box. Returns
     true if it would create a duplicate, false otherwise. Value 0 (clearing) is
@@ -340,3 +397,37 @@ let update_cell grid original_grid row col value =
   let new_grid = Array.map Array.copy grid in
   new_grid.(row).(col) <- value;
   new_grid
+
+(** [solve grid] attempts to solve a Sudoku puzzle using backtracking. Returns
+    [Ok solved_grid] if a solution is found. If the puzzle has internal
+    conflicts or no solution exists, returns [Error msg]. The input [grid] is
+    never mutated. *)
+let solve grid =
+  (* Fail fast if the starting grid is inconsistent *)
+  if not (is_consistent grid) then
+    Error "Unsolvable: the initial board contains conflicts."
+  else
+    let working = Array.map Array.copy grid in
+    let rec find_empty r c =
+      if r = 9 then None
+      else if c = 9 then find_empty (r + 1) 0
+      else if working.(r).(c) = 0 then Some (r, c)
+      else find_empty r (c + 1)
+    in
+    let rec try_value r c value =
+      if value > 9 then false
+      else if would_create_duplicate working r c value then
+        try_value r c (value + 1)
+      else (
+        working.(r).(c) <- value;
+        if backtrack () then true
+        else (
+          working.(r).(c) <- 0;
+          try_value r c (value + 1)))
+    and backtrack () =
+      match find_empty 0 0 with
+      | None -> true
+      | Some (r, c) -> try_value r c 1
+    in
+    if backtrack () then Ok working
+    else Error "Unsolvable: no valid solution exists for this board."

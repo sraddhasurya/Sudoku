@@ -29,6 +29,11 @@ val update_cell : grid -> grid -> int -> int -> int -> grid
     (locked) cells. Raises [Parse_error] if coordinates or value are invalid, or
     if attempting to edit a locked cell. *)
 
+val solve : grid -> (grid, string) result
+(** [solve grid] attempts to solve a Sudoku puzzle using backtracking. Returns
+    [Ok solution] if the puzzle can be solved, or [Error msg] if the board has
+    conflicts or no solution exists. The input grid is left unchanged. *)
+
 val is_valid_sudoku : grid -> bool
 (** [is_valid_sudoku grid] checks if [grid] is a valid completed Sudoku
     solution. Returns true if:
