@@ -113,9 +113,7 @@ let update_cell_valid _ctx =
   let updated = Sudoku.update_cell grid original_grid 0 0 5 in
   assert_equal 5 updated.(0).(0);
   assert_equal 0 grid.(0).(0);
-  (* Original grid unchanged *)
   assert_equal 0 updated.(0).(1)
-(* Other cells unchanged *)
 
 let update_cell_multiple _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -126,7 +124,6 @@ let update_cell_multiple _ctx =
   assert_equal 3 updated2.(5).(6);
   assert_equal 0 updated2.(0).(0);
   assert_equal 0 updated1.(5).(6)
-(* First update doesn't affect second cell *)
 
 let update_cell_invalid_row_negative _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -194,7 +191,6 @@ let update_cell_empty_cell_allowed _ctx =
       let updated = Sudoku.update_cell grid original_grid 0 2 4 in
       assert_equal 4 updated.(0).(2);
       assert_equal 0 grid.(0).(2))
-(* Original unchanged *)
 
 let update_cell_all_corners _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -213,27 +209,21 @@ let update_cell_all_corners _ctx =
 let update_cell_zero_value _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
-  (* Setting a cell to 0 should be allowed on an empty grid *)
   let updated = Sudoku.update_cell grid original_grid 4 4 0 in
   assert_equal 0 updated.(4).(4)
 
 let update_cell_edit_user_input _ctx =
-  (* Test that users can edit their own inputs *)
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
-  (* Fill a cell *)
   let updated1 = Sudoku.update_cell grid original_grid 2 3 7 in
   assert_equal 7 updated1.(2).(3);
-  (* Edit the same cell - should be allowed since it's user input *)
   let updated2 = Sudoku.update_cell updated1 original_grid 2 3 5 in
   assert_equal 5 updated2.(2).(3);
-  (* Can even clear it back to 0 *)
   let updated3 = Sudoku.update_cell updated2 original_grid 2 3 0 in
   assert_equal 0 updated3.(2).(3)
 
 (* Test validation functions *)
 let valid_complete_sudoku _ctx =
-  (* A valid complete sudoku solution *)
   let valid_grid_json =
     {|
 [
@@ -268,9 +258,7 @@ let empty_board_not_complete _ctx =
 
 let board_with_invalid_values _ctx =
   (* Board with values outside 1-9 range *)
-  (* We need to create the grid manually since load_grid validates 0-9 during parsing *)
   let grid = Array.make_matrix 9 9 0 in
-  (* Fill with valid values first *)
   grid.(0) <- [| 5; 3; 4; 6; 7; 8; 9; 1; 2 |];
   grid.(1) <- [| 6; 7; 2; 1; 9; 5; 3; 4; 8 |];
   grid.(2) <- [| 1; 9; 8; 3; 4; 2; 5; 6; 7 |];
@@ -280,9 +268,7 @@ let board_with_invalid_values _ctx =
   grid.(6) <- [| 9; 6; 1; 5; 3; 7; 2; 8; 4 |];
   grid.(7) <- [| 2; 8; 7; 4; 1; 9; 6; 3; 5 |];
   grid.(8) <- [| 3; 4; 5; 2; 8; 6; 1; 7; 10 |];
-  (* Now set the invalid value (10) directly *)
   grid.(8).(8) <- 10;
-  (* Validation should reject it *)
   assert_bool "Board with invalid value not valid"
     (not (Sudoku.is_valid_sudoku grid))
 
@@ -331,7 +317,6 @@ let board_missing_digit _ctx =
       assert_bool "Board missing a digit not valid"
         (not (Sudoku.is_valid_sudoku grid)))
 
-(* Additional validation tests *)
 let board_with_duplicate_in_column _ctx =
   (* Board with duplicate in first column *)
   let duplicate_col_json =
@@ -426,11 +411,9 @@ let solves_sample_board _ctx =
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       match Sudoku.solve grid with
-      | Error msg ->
-          assert_failure ("Expected a solution, got error: " ^ msg)
+      | Error msg -> assert_failure ("Expected a solution, got error: " ^ msg)
       | Ok solved ->
           assert_bool "Solution should be valid" (Sudoku.is_valid_sudoku solved);
-          (* Input grid remains unchanged *)
           assert_equal 0 grid.(0).(2);
           assert_equal solved_sample_grid solved)
 
@@ -444,20 +427,16 @@ let detects_unsolvable_board _ctx =
 
 (* Tests for original cell protection *)
 let update_cell_protect_original_cell_all_values _ctx =
-  (* Test that original cells with any value 1-9 are all protected *)
   let test_original_value value =
     let grid = Array.make_matrix 9 9 0 in
     let original_grid = Array.make_matrix 9 9 0 in
     original_grid.(4).(4) <- value;
     grid.(4).(4) <- value;
-    (* Try to change it - should fail *)
     assert_parse_error (fun () ->
         ignore (Sudoku.update_cell grid original_grid 4 4 ((value mod 9) + 1)));
-    (* Try to clear it - should fail *)
     assert_parse_error (fun () ->
         ignore (Sudoku.update_cell grid original_grid 4 4 0))
   in
-  (* Test all values 1-9 *)
   for i = 1 to 9 do
     test_original_value i
   done;
@@ -492,7 +471,6 @@ let update_cell_protect_multiple_original_cells _ctx =
 
 (* Tests for user input editing *)
 let update_cell_edit_user_input_multiple_times _ctx =
-  (* Test editing the same user-filled cell multiple times *)
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 1 1 3 in
@@ -505,125 +483,93 @@ let update_cell_edit_user_input_multiple_times _ctx =
   assert_equal 1 updated4.(1).(1)
 
 let update_cell_clear_user_input _ctx =
-  (* Test clearing a user-filled cell back to 0 *)
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 5 5 8 in
   assert_equal 8 updated1.(5).(5);
   let updated2 = Sudoku.update_cell updated1 original_grid 5 5 0 in
   assert_equal 0 updated2.(5).(5);
-  (* Should be able to fill it again after clearing *)
   let updated3 = Sudoku.update_cell updated2 original_grid 5 5 2 in
   assert_equal 2 updated3.(5).(5)
 
 let update_cell_edit_after_clearing_user_input _ctx =
-  (* Test editing a cell after clearing previous user input *)
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
-  (* Fill, clear, fill again with different value *)
   let updated1 = Sudoku.update_cell grid original_grid 3 3 5 in
   assert_equal 5 updated1.(3).(3);
   let updated2 = Sudoku.update_cell updated1 original_grid 3 3 0 in
   assert_equal 0 updated2.(3).(3);
   let updated3 = Sudoku.update_cell updated2 original_grid 3 3 8 in
   assert_equal 8 updated3.(3).(3);
-  (* Edit it again *)
   let updated4 = Sudoku.update_cell updated3 original_grid 3 3 1 in
   assert_equal 1 updated4.(3).(3)
 
 let update_cell_edit_multiple_user_cells _ctx =
-  (* Test editing multiple different user-filled cells *)
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
-  (* Fill multiple cells *)
   let updated1 = Sudoku.update_cell grid original_grid 0 0 1 in
   let updated2 = Sudoku.update_cell updated1 original_grid 2 2 5 in
   let updated3 = Sudoku.update_cell updated2 original_grid 4 4 9 in
   assert_equal 1 updated3.(0).(0);
   assert_equal 5 updated3.(2).(2);
   assert_equal 9 updated3.(4).(4);
-  (* Edit each of them *)
   let updated4 = Sudoku.update_cell updated3 original_grid 0 0 3 in
   let updated5 = Sudoku.update_cell updated4 original_grid 2 2 7 in
   let updated6 = Sudoku.update_cell updated5 original_grid 4 4 2 in
   assert_equal 3 updated6.(0).(0);
   assert_equal 7 updated6.(2).(2);
   assert_equal 2 updated6.(4).(4);
-  (* Clear one of them *)
   let updated7 = Sudoku.update_cell updated6 original_grid 2 2 0 in
   assert_equal 0 updated7.(2).(2);
-  (* Others should still be there *)
   assert_equal 3 updated7.(0).(0);
   assert_equal 2 updated7.(4).(4)
 
 (* Tests for mixed scenarios *)
 let update_cell_mixed_original_and_user_cells _ctx =
-  (* Test mixed scenario: some cells are original, some are user-filled *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Fill an empty cell *)
       let updated1 = Sudoku.update_cell grid original_grid 0 2 4 in
       assert_equal 4 updated1.(0).(2);
-      (* Edit the user-filled cell - use 2 instead of 7 (7 conflicts with
-         row) *)
       let updated2 = Sudoku.update_cell updated1 original_grid 0 2 2 in
       assert_equal 2 updated2.(0).(2);
-      (* Try to edit an original cell - should fail *)
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell updated2 original_grid 0 0 1));
-      (* Fill another empty cell at (0,5) - use 4 (valid, no conflicts) *)
       let updated3 = Sudoku.update_cell updated2 original_grid 0 5 4 in
       assert_equal 4 updated3.(0).(5);
-      (* Edit this new user-filled cell - use 6 (valid, 9 conflicts with
-         column) *)
       let updated4 = Sudoku.update_cell updated3 original_grid 0 5 6 in
       assert_equal 6 updated4.(0).(5);
-      (* Original cells should still be protected *)
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell updated4 original_grid 0 1 1));
-      (* Can clear user-filled cells *)
       let updated5 = Sudoku.update_cell updated4 original_grid 0 2 0 in
       assert_equal 0 updated5.(0).(2);
       assert_equal 6 updated5.(0).(5))
 
 let update_cell_edit_user_fill_then_edit _ctx =
-  (* Test filling an empty cell, then editing it *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Cell (0,2) is empty (0) in sample_json *)
       assert_equal 0 grid.(0).(2);
       assert_equal 0 original_grid.(0).(2);
-      (* Fill it *)
       let updated1 = Sudoku.update_cell grid original_grid 0 2 4 in
       assert_equal 4 updated1.(0).(2);
-      (* Edit it - use 2 instead of 6 (6 conflicts with box) *)
       let updated2 = Sudoku.update_cell updated1 original_grid 0 2 2 in
       assert_equal 2 updated2.(0).(2);
-      (* Edit again *)
       let updated3 = Sudoku.update_cell updated2 original_grid 0 2 2 in
       assert_equal 2 updated3.(0).(2);
-      (* Clear it *)
       let updated4 = Sudoku.update_cell updated3 original_grid 0 2 0 in
       assert_equal 0 updated4.(0).(2))
 
 let update_cell_empty_original_cell_editable _ctx =
-  (* Test that empty cells in original grid are editable *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Cell (0,2) is empty (0) in original - should be editable *)
       assert_equal 0 grid.(0).(2);
       assert_equal 0 original_grid.(0).(2);
-      (* Should be able to fill it *)
       let updated = Sudoku.update_cell grid original_grid 0 2 4 in
       assert_equal 4 updated.(0).(2);
-      (* Should be able to edit it - use 2 instead of 6 (6 conflicts with
-         box) *)
       let updated2 = Sudoku.update_cell updated original_grid 0 2 2 in
       assert_equal 2 updated2.(0).(2);
-      (* Should be able to clear it *)
       let updated3 = Sudoku.update_cell updated2 original_grid 0 2 0 in
       assert_equal 0 updated3.(0).(2))
 
@@ -639,22 +585,16 @@ let update_cell_prevent_duplicate_in_row _ctx =
           ignore (Sudoku.update_cell grid original_grid 0 2 5)))
 
 let update_cell_prevent_duplicate_in_column _ctx =
-  (* Test that placing a duplicate in a column is prevented *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Column 0 has 5 at (0,0), 6 at (1,0), 8 at (3,0), 4 at (4,0), 7 at (5,0) *)
-      (* Try to place 5 at (2,0) - should fail *)
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell grid original_grid 2 0 5)))
 
 let update_cell_prevent_duplicate_in_box _ctx =
-  (* Test that placing a duplicate in a 3x3 box is prevented *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Top-left box has 5 at (0,0), 3 at (0,1), 6 at (1,0), 9 at (1,4), 8 at (1,5) *)
-      (* Try to place 5 at (2,2) in the same box - should fail *)
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell grid original_grid 2 2 5)))
 
@@ -670,24 +610,18 @@ let update_cell_allow_valid_move _ctx =
       assert_equal 4 updated.(0).(2))
 
 let update_cell_allow_clearing_even_with_duplicates _ctx =
-  (* Test that clearing (setting to 0) is always allowed *)
   let grid = Array.make_matrix 9 9 0 in
   let original_grid = Array.make_matrix 9 9 0 in
-  (* Create a scenario with duplicates *)
   grid.(0).(0) <- 5;
   grid.(0).(1) <- 5;
-  (* Should be able to clear one of them *)
   let updated = Sudoku.update_cell grid original_grid 0 1 0 in
   assert_equal 0 updated.(0).(1);
   assert_equal 5 updated.(0).(0)
 
 let update_cell_prevent_multiple_duplicates _ctx =
-  (* Test that the first duplicate found is reported *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Row 0 has 5 at (0,0) *)
-      (* Try to place 5 at (0,2) - should fail with row duplicate message *)
       try
         ignore (Sudoku.update_cell grid original_grid 0 2 5);
         assert_failure "Expected Parse_error for duplicate in row"
@@ -697,17 +631,12 @@ let update_cell_prevent_multiple_duplicates _ctx =
 
 (* Test user winning the game *)
 let user_wins_game _ctx =
-  (* Test simulating a user completing a puzzle and winning *)
-  (* Start with sample_json which is incomplete *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* Verify it's incomplete initially *)
       assert_bool "Initial board is incomplete" (not (Sudoku.is_complete grid));
       assert_bool "Initial board is not valid"
         (not (Sudoku.is_valid_sudoku grid));
-      (* User fills in cells step by step to complete the puzzle *)
-      (* This is a valid solution for sample_json *)
       let step1 = Sudoku.update_cell grid original_grid 0 2 4 in
       let step2 = Sudoku.update_cell step1 original_grid 0 3 6 in
       let step3 = Sudoku.update_cell step2 original_grid 0 5 8 in
@@ -759,36 +688,245 @@ let user_wins_game _ctx =
       let step49 = Sudoku.update_cell step48 original_grid 8 3 2 in
       let step50 = Sudoku.update_cell step49 original_grid 8 5 6 in
       let step51 = Sudoku.update_cell step50 original_grid 8 6 1 in
-      (* Now the board should be complete *)
       assert_bool "Board is complete after filling all cells"
         (Sudoku.is_complete step51);
-      (* And it should be a valid solution *)
       assert_bool "User wins - board is valid sudoku solution"
         (Sudoku.is_valid_sudoku step51))
 
 let user_wins_with_edits _ctx =
-  (* Test that user can edit their inputs and still win *)
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      (* User fills a cell incorrectly first *)
       let step1 = Sudoku.update_cell grid original_grid 0 2 1 in
-      (* Then corrects it *)
       let step2 = Sudoku.update_cell step1 original_grid 0 2 4 in
-      (* Continue filling the puzzle... *)
       let step3 = Sudoku.update_cell step2 original_grid 0 3 6 in
       let step4 = Sudoku.update_cell step3 original_grid 0 5 8 in
-      (* User edits another cell *)
       let step5 = Sudoku.update_cell step4 original_grid 0 5 8 in
-      (* Clear and refill a cell *)
       let step6 = Sudoku.update_cell step5 original_grid 0 5 0 in
       let step7 = Sudoku.update_cell step6 original_grid 0 5 8 in
-      (* Fill remaining cells to complete puzzle *)
-      (* For brevity, we'll just verify the pattern works *)
-      (* In a real scenario, user would fill all remaining cells *)
-      (* But we can test that editing doesn't break the game flow *)
       assert_bool "Can edit cells and continue playing"
         (not (Sudoku.is_complete step7)))
+
+(* Tests for error handling in parsing *)
+let parse_error_non_integer_cell _ctx =
+  let bad =
+    {| [ ["a",0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0] ] |}
+  in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_row_not_list _ctx =
+  let bad =
+    {| [ 123, [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0] ] |}
+  in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_board_not_list _ctx =
+  let bad = {| { "not_board": "value" } |} in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_missing_board_field _ctx =
+  let bad = {| { "other_field": [[0,0,0,0,0,0,0,0,0]] } |} in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_invalid_json_structure _ctx =
+  let bad = {| "not a list or object" |} in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_malformed_json _ctx =
+  let bad = {| [ [0,0,0,0,0,0,0,0,0], |} in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_nonexistent_file _ctx =
+  assert_parse_error (fun () ->
+      ignore (Sudoku.load_grid "/nonexistent/path/to/file.json"))
+
+let parse_error_wrong_row_count _ctx =
+  let bad =
+    {| [ [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0] ] |}
+  in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+let parse_error_wrong_col_count _ctx =
+  let bad =
+    {| [ [0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0],
+                 [0,0,0,0,0,0,0,0,0] ] |}
+  in
+  assert_parse_error (fun () ->
+      with_temp_file bad (fun path -> ignore (Sudoku.load_grid path)))
+
+(* Tests for format_grid and print_grid *)
+let format_grid_basic _ctx =
+  let grid = Array.make_matrix 9 9 0 in
+  grid.(0).(0) <- 5;
+  grid.(4).(4) <- 3;
+  let formatted = Sudoku.format_grid grid in
+  assert_bool "Formatted grid contains header" (String.contains formatted '1');
+  assert_bool "Formatted grid contains separator"
+    (String.contains formatted '+');
+  assert_bool "Formatted grid contains cell value"
+    (String.contains formatted '5');
+  assert_bool "Formatted grid contains empty cell"
+    (String.contains formatted '.')
+
+let format_grid_with_colorize _ctx =
+  let grid = Array.make_matrix 9 9 0 in
+  grid.(0).(0) <- 5;
+  let colorize r c text = if r = 0 && c = 0 then "[" ^ text ^ "]" else text in
+  let formatted = Sudoku.format_grid ~colorize grid in
+  assert_bool "Formatted grid with colorize contains marker"
+    (String.contains formatted '[')
+
+(* Tests for generate function *)
+let generate_easy _ctx =
+  let grid = Sudoku.generate Sudoku.Easy in
+  assert_equal 9 (Array.length grid);
+  assert_equal 9 (Array.length grid.(0));
+  let count = ref 0 in
+  for i = 0 to 8 do
+    for j = 0 to 8 do
+      if grid.(i).(j) <> 0 then incr count
+    done
+  done;
+  assert_bool "Easy puzzle has reasonable number of clues"
+    (!count >= 30 && !count <= 50);
+  match Sudoku.solve grid with
+  | Ok _ -> ()
+  | Error _ -> assert_failure "Generated puzzle should be solvable"
+
+let generate_medium _ctx =
+  let grid = Sudoku.generate Sudoku.Medium in
+  assert_equal 9 (Array.length grid);
+  assert_equal 9 (Array.length grid.(0));
+  let count = ref 0 in
+  for i = 0 to 8 do
+    for j = 0 to 8 do
+      if grid.(i).(j) <> 0 then incr count
+    done
+  done;
+  assert_bool "Medium puzzle has reasonable number of clues"
+    (!count >= 25 && !count <= 40);
+  match Sudoku.solve grid with
+  | Ok _ -> ()
+  | Error _ -> assert_failure "Generated puzzle should be solvable"
+
+let generate_hard _ctx =
+  let grid = Sudoku.generate Sudoku.Hard in
+  assert_equal 9 (Array.length grid);
+  assert_equal 9 (Array.length grid.(0));
+  let count = ref 0 in
+  for i = 0 to 8 do
+    for j = 0 to 8 do
+      if grid.(i).(j) <> 0 then incr count
+    done
+  done;
+  assert_bool "Hard puzzle has reasonable number of clues"
+    (!count >= 20 && !count <= 30);
+  match Sudoku.solve grid with
+  | Ok _ -> ()
+  | Error _ -> assert_failure "Generated puzzle should be solvable"
+
+(* Tests for edge cases in validation *)
+
+let is_valid_sudoku_invalid_column _ctx =
+  let grid = Array.make_matrix 9 9 0 in
+  grid.(0) <- [| 5; 3; 4; 6; 7; 8; 9; 1; 2 |];
+  grid.(1) <- [| 5; 7; 2; 1; 9; 5; 3; 4; 8 |];
+  grid.(2) <- [| 1; 9; 8; 3; 4; 2; 5; 6; 7 |];
+  grid.(3) <- [| 8; 5; 9; 7; 6; 1; 4; 2; 3 |];
+  grid.(4) <- [| 4; 2; 6; 8; 5; 3; 7; 9; 1 |];
+  grid.(5) <- [| 7; 1; 3; 9; 2; 4; 8; 5; 6 |];
+  grid.(6) <- [| 9; 6; 1; 5; 3; 7; 2; 8; 4 |];
+  grid.(7) <- [| 2; 8; 7; 4; 1; 9; 6; 3; 5 |];
+  grid.(8) <- [| 3; 4; 5; 2; 8; 6; 1; 7; 9 |];
+  for i = 0 to 8 do
+    for j = 0 to 8 do
+      if grid.(i).(j) = 0 then grid.(i).(j) <- 1
+    done
+  done;
+  assert_bool "Board with duplicate column is not valid"
+    (not (Sudoku.is_valid_sudoku grid))
+
+let is_consistent_invalid_column _ctx =
+  let grid = Array.make_matrix 9 9 0 in
+  grid.(0).(0) <- 5;
+  grid.(1).(0) <- 5;
+  match Sudoku.solve grid with
+  | Error msg ->
+      assert_bool "Error message mentions conflicts"
+        (String.contains msg 'c' || String.contains msg 'C')
+  | Ok _ -> assert_failure "Expected error for inconsistent board"
+
+let update_cell_error_box_duplicate _ctx =
+  with_temp_file sample_json (fun path ->
+      let grid = Sudoku.load_grid path in
+      let original_grid = Sudoku.load_grid path in
+      try
+        ignore (Sudoku.update_cell grid original_grid 2 2 5);
+        assert_failure "Expected Parse_error for duplicate in box"
+      with Sudoku.Parse_error msg ->
+        assert_bool "Error message mentions box duplicate"
+          (String.contains msg 'b' || String.contains msg 'B'
+         || String.contains msg '3'))
+
+let solve_no_solution _ctx =
+  let conflict_grid = Array.make_matrix 9 9 0 in
+  conflict_grid.(0).(0) <- 1;
+  conflict_grid.(0).(1) <- 1;
+  match Sudoku.solve conflict_grid with
+  | Error _ -> ()
+  | Ok _ -> assert_failure "Expected error for inconsistent board"
+
+let solve_empty_board _ctx =
+  let grid = Array.make_matrix 9 9 0 in
+  match Sudoku.solve grid with
+  | Error _ -> assert_failure "Empty board should be solvable"
+  | Ok solved ->
+      assert_bool "Solved empty board is valid" (Sudoku.is_valid_sudoku solved);
+      assert_bool "Solved empty board is complete" (Sudoku.is_complete solved)
+
+let candidates_function _ctx =
+  with_temp_file sample_json (fun path ->
+      let grid = Sudoku.load_grid path in
+      match Sudoku.solve grid with
+      | Ok _ -> ()
+      | Error _ -> assert_failure "Sample board should be solvable")
+
+let best_empty_cell_with_rng _ctx =
+  let grid = Sudoku.generate Sudoku.Easy in
+  match Sudoku.solve grid with
+  | Ok _ -> ()
+  | Error _ -> assert_failure "Generated puzzle should be solvable"
 
 let suite =
   "sudoku"
@@ -858,6 +996,28 @@ let suite =
          "detects_unsolvable_board" >:: detects_unsolvable_board;
          "user_wins_game" >:: user_wins_game;
          "user_wins_with_edits" >:: user_wins_with_edits;
+         "parse_error_non_integer_cell" >:: parse_error_non_integer_cell;
+         "parse_error_row_not_list" >:: parse_error_row_not_list;
+         "parse_error_board_not_list" >:: parse_error_board_not_list;
+         "parse_error_missing_board_field" >:: parse_error_missing_board_field;
+         "parse_error_invalid_json_structure"
+         >:: parse_error_invalid_json_structure;
+         "parse_error_malformed_json" >:: parse_error_malformed_json;
+         "parse_error_nonexistent_file" >:: parse_error_nonexistent_file;
+         "parse_error_wrong_row_count" >:: parse_error_wrong_row_count;
+         "parse_error_wrong_col_count" >:: parse_error_wrong_col_count;
+         "format_grid_basic" >:: format_grid_basic;
+         "format_grid_with_colorize" >:: format_grid_with_colorize;
+         "generate_easy" >:: generate_easy;
+         "generate_medium" >:: generate_medium;
+         "generate_hard" >:: generate_hard;
+         "is_valid_sudoku_invalid_column" >:: is_valid_sudoku_invalid_column;
+         "is_consistent_invalid_column" >:: is_consistent_invalid_column;
+         "update_cell_error_box_duplicate" >:: update_cell_error_box_duplicate;
+         "solve_no_solution" >:: solve_no_solution;
+         "solve_empty_board" >:: solve_empty_board;
+         "candidates_function" >:: candidates_function;
+         "best_empty_cell_with_rng" >:: best_empty_cell_with_rng;
        ]
 
 let () = run_test_tt_main suite
