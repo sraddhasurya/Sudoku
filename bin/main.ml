@@ -200,13 +200,53 @@ let start_game initial_grid =
     start_time
 
 let () =
-  match Array.to_list Sys.argv |> List.tl with
-  | [] -> usage ()
-  | [ path ] -> (
+  (* Allow optional path argument; if none provided, ask user for difficulty
+     and pick a random board from the corresponding subfolder in
+     ./boards/<difficulty> *)
+  let args = Array.to_list Sys.argv |> List.tl in
+  Random.self_init ();
+  let cwd = Sys.getcwd () in
+  let boards_dir = Filename.concat cwd "boards" in
+
+  let pick_random_board_for difficulty =
+    let dir = Filename.concat boards_dir difficulty in
+    if Sys.file_exists dir && Sys.is_directory dir then
+      let entries = Sys.readdir dir |> Array.to_list in
+      let jsons = List.filter (fun f -> Filename.check_suffix f ".json") entries in
+      match jsons with
+      | [] -> Error (Printf.sprintf "No .json boards in %s" dir)
+      | files ->
+          let idx = Random.int (List.length files) in
+          let file = List.nth files idx in
+          Ok (Filename.concat dir file)
+    else Error (Printf.sprintf "Boards directory not found for '%s'" difficulty)
+  in
+
+  let choose_board_from_user () =
+    let rec loop () =
+      print_string "Choose difficulty (easy, medium, hard): ";
+      flush stdout;
       try
-        let original_grid = path |> Sudoku.load_grid in
-        start_game original_grid
-      with Sudoku.Parse_error msg ->
-        prerr_endline ("Error: " ^ msg);
-        exit 1)
-  | _ -> usage ()
+        match String.lowercase_ascii (String.trim (read_line ())) with
+        | "easy" | "medium" | "hard" as d -> (
+            match pick_random_board_for d with
+            | Ok path -> path
+            | Error msg -> prerr_endline ("Error: " ^ msg); loop ())
+        | other -> prerr_endline ("Invalid difficulty: " ^ other); loop ()
+      with End_of_file -> exit 0
+    in
+    loop ()
+  in
+
+  let path =
+    match args with
+    | [ path ] -> path
+    | [] -> choose_board_from_user ()
+    | _ -> usage ()
+  in
+  try
+    let original_grid = path |> Sudoku.load_grid in
+    start_game original_grid
+  with Sudoku.Parse_error msg ->
+    prerr_endline ("Error: " ^ msg);
+    exit 1
