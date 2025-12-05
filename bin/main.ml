@@ -100,6 +100,7 @@ type action =
   | CmdClear
   | CmdQuit
   | CmdHint
+  | CmdSolve
   | CmdMenu
   | Move of int * int * int
 
@@ -111,7 +112,7 @@ let read_field label =
   | s -> String.trim s
 
 let read_action () =
-  print_string "Enter value row col (ex: 1 1 1) (or 'hint', 'clear', 'menu', 'quit'): ";
+  print_string "Enter value row col (ex: 1 1 1) (or 'hint', 'solve', 'clear', 'menu', 'quit'): ";
   flush stdout;
   match read_line () with
   | exception End_of_file -> raise End_of_file
@@ -119,6 +120,7 @@ let read_action () =
       let trimmed = String.trim line in
       match String.lowercase_ascii trimmed with
       | "hint" | "h" -> CmdHint
+      | "solve" | "s" -> CmdSolve
       | "clear" -> CmdClear
       | "menu" -> CmdMenu
       | "quit" | "exit" | "q" -> CmdQuit
@@ -222,6 +224,18 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
         print_endline "Goodbye!";
         Printf.printf "Time: %s\n%!" (format_elapsed start_time);
         Quit
+    | CmdSolve ->
+        (match solution with
+        | None ->
+            prerr_endline "Solve unavailable: solver could not find a solution.";
+            interactive_loop grid original_grid autocorrect solution incorrect
+              hints mistakes start_time
+        | Some sol ->
+            print_endline "\nSolved board:";
+            Sudoku.print_grid sol;
+            print_endline "\nGame over!";
+            Printf.printf "Time: %s\n%!" (format_elapsed start_time);
+            prompt_menu_or_quit ())
     | CmdMenu ->
         print_endline "Returning to menu...";
         Menu
@@ -354,6 +368,7 @@ let start_game initial_grid =
      - Type 'hint' to fill a random empty cell correctly\n\
      - Type 'clear' to reset to the original puzzle\n\
      - Type 'menu' to pick a different puzzle\n\
+     - Type 'solve' to reveal the solution\n\
      - Type 'quit' to exit\n\
      You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
