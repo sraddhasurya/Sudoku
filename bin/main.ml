@@ -192,6 +192,7 @@ let start_game initial_grid =
      - Enter moves as: <number> (<row>, <col>)\n\
      - Type 'clear' to reset to the original puzzle\n\
      - Type 'quit' to exit\n\
+     - Enter 0 to erase a tile\n\
      You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
   let start_time = Unix.gettimeofday () in
