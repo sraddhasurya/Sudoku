@@ -48,25 +48,25 @@ let rec prompt_autocorrect () =
           prerr_endline "Please answer y or n.";
           prompt_autocorrect ())
 
-let colorize_board ~original_grid ~incorrect ~hints =
+let colorize_board ~original_grid ~incorrect ~highlight =
   let red text = "\027[31m" ^ text ^ "\027[0m" in
   let green text = "\027[32m" ^ text ^ "\027[0m" in
   fun r c text ->
     let colored =
       if incorrect.(r).(c) then red text
-      else if hints.(r).(c) then green text
+      else if highlight.(r).(c) then green text
       else text
     in
     if original_grid.(r).(c) <> 0 then "\027[1m" ^ colored ^ "\027[0m"
     else colored
 
-let print_board ~autocorrect original_grid incorrect hints grid =
+let print_board ~autocorrect ~highlight original_grid incorrect grid =
   let incorrect_to_show =
     if autocorrect then incorrect else Array.make_matrix 9 9 false
   in
   Sudoku.print_grid
     ~colorize:(colorize_board ~original_grid ~incorrect:incorrect_to_show
-                 ~hints)
+                 ~highlight)
     grid
 
 let update_incorrect incorrect solution row col value =
@@ -81,7 +81,7 @@ let duplicate_error msg =
   with Not_found -> false
 
 let rec handle_completion grid original_grid autocorrect solution incorrect
-    hints mistakes start_time =
+    hints highlight mistakes start_time =
   if Sudoku.is_complete grid then
     if Sudoku.is_valid_sudoku grid then (
       print_endline
@@ -94,13 +94,13 @@ let rec handle_completion grid original_grid autocorrect solution incorrect
          The board is complete, but it's not a valid Sudoku solution. Please \
          check for duplicates in rows, columns, or boxes.";
       interactive_loop grid original_grid autocorrect solution incorrect hints
-        mistakes start_time)
+        highlight mistakes start_time)
   else
     interactive_loop grid original_grid autocorrect solution incorrect hints
-      mistakes start_time
+      highlight mistakes start_time
 
 and interactive_loop grid original_grid autocorrect solution incorrect hints
-    mistakes start_time =
+    highlight mistakes start_time =
   if autocorrect then print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes)
   else print_endline "";
   print_string "Enter move: ";
@@ -112,18 +112,19 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
       let reset_grid = Array.map Array.copy original_grid in
       let incorrect_reset = Array.make_matrix 9 9 false in
       let hints_reset = Array.make_matrix 9 9 false in
+      let highlight_reset = Array.make_matrix 9 9 false in
       print_endline "\nBoard reset to original puzzle.";
-      print_board ~autocorrect original_grid incorrect_reset hints_reset
-        reset_grid;
+      print_board ~autocorrect ~highlight:highlight_reset original_grid
+        incorrect_reset reset_grid;
       interactive_loop reset_grid original_grid autocorrect solution
-        incorrect_reset hints_reset mistakes start_time)
+        incorrect_reset hints_reset highlight_reset mistakes start_time)
     else if lower = "hint" then (
       match solution with
       | None ->
           print_endline
             "Hints unavailable because the solver could not find a solution.";
           interactive_loop grid original_grid autocorrect solution incorrect
-            hints mistakes start_time
+            hints highlight mistakes start_time
       | Some sol -> (
           let empties =
             let acc = ref [] in
@@ -138,7 +139,7 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
           | [] ->
               print_endline "No empty cells available for a hint.";
               interactive_loop grid original_grid autocorrect solution
-                incorrect hints mistakes start_time
+                incorrect hints highlight mistakes start_time
           | cells ->
               let idx = Random.int (List.length cells) in
               let row, col = List.nth cells idx in
@@ -153,11 +154,14 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
                   update_incorrect incorrect sol row col value
                 else incorrect
               in
+              let highlight_once = Array.make_matrix 9 9 false in
+              highlight_once.(row).(col) <- true;
               print_endline "\nHint added to the board.";
-              print_board ~autocorrect original_grid incorrect' hints'
-                updated_grid;
+              print_board ~autocorrect ~highlight:highlight_once original_grid
+                incorrect' updated_grid;
               interactive_loop updated_grid original_grid autocorrect solution
-                incorrect' hints' mistakes start_time))
+                incorrect' hints' (Array.make_matrix 9 9 false) mistakes
+                start_time))
     else
       match parse_input input with
     | None ->
@@ -172,13 +176,13 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
         if value < 0 || value > 9 then (
           prerr_endline "Number must be between 1 and 9 (use 0 to clear).";
           interactive_loop grid original_grid autocorrect solution incorrect
-            hints mistakes start_time)
+            hints highlight mistakes start_time)
         else
           try
             if hints.(row).(col) then (
               prerr_endline "Cannot change a hinted cell.";
               interactive_loop grid original_grid autocorrect solution incorrect
-                hints mistakes start_time);
+                hints highlight mistakes start_time);
             let updated_grid =
               Sudoku.update_cell grid original_grid row col value
             in
@@ -194,7 +198,7 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
           in
           let mistakes' = mistakes + (if mistake_inc then 1 else 0) in
           print_endline "";
-          print_board ~autocorrect original_grid incorrect' hints updated_grid;
+          print_board ~autocorrect ~highlight original_grid incorrect' updated_grid;
           if mistakes' >= 3 then (
             print_endline
               "\nYou ran out of tries. The correct board is:\n";
@@ -218,10 +222,10 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
                  The board is complete, but it's not a valid Sudoku solution. \
                  Please check for duplicates in rows, columns, or boxes.";
               interactive_loop updated_grid original_grid autocorrect solution
-                incorrect' hints mistakes' start_time)
+                incorrect' hints highlight mistakes' start_time)
           else
             interactive_loop updated_grid original_grid autocorrect solution
-              incorrect' hints mistakes' start_time
+              incorrect' hints highlight mistakes' start_time
         with Sudoku.Parse_error msg ->
           if duplicate_error msg then (
             let mistakes' = mistakes + 1 in
@@ -233,7 +237,7 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
               | _ -> incorrect
             in
             print_endline "";
-            print_board ~autocorrect original_grid incorrect' hints
+            print_board ~autocorrect ~highlight original_grid incorrect'
               updated_grid;
             if mistakes' >= 3 then (
               print_endline
@@ -246,11 +250,11 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
               Printf.printf "Time: %s\n%!" (format_elapsed start_time);
               exit 0);
             interactive_loop updated_grid original_grid autocorrect solution
-              incorrect' hints mistakes' start_time)
+              incorrect' hints highlight mistakes' start_time)
           else (
             prerr_endline ("Error: " ^ msg);
             interactive_loop grid original_grid autocorrect solution incorrect
-              hints mistakes start_time))
+              hints highlight mistakes start_time))
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
@@ -259,7 +263,7 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
   | Invalid_argument msg ->
       prerr_endline ("Error: " ^ msg);
       interactive_loop grid original_grid autocorrect solution incorrect
-        hints mistakes start_time
+        hints highlight mistakes start_time
 
 let start_game initial_grid =
   let original_grid = Array.map Array.copy initial_grid in
@@ -293,10 +297,11 @@ let start_game initial_grid =
      You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
   let hints = Array.make_matrix 9 9 false in
+  let highlight = Array.make_matrix 9 9 false in
   let start_time = Unix.gettimeofday () in
-  print_board ~autocorrect original_grid incorrect hints grid;
+  print_board ~autocorrect ~highlight original_grid incorrect grid;
   handle_completion grid original_grid autocorrect solution_opt incorrect hints
-    0 start_time
+    highlight 0 start_time
 
 let () =
   (* Allow optional path argument; if none provided, ask user for difficulty
