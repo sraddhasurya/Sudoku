@@ -48,14 +48,21 @@ let rec prompt_autocorrect () =
           prerr_endline "Please answer y or n.";
           prompt_autocorrect ())
 
-let colorize_board grid incorrect =
+let colorize_board original_grid incorrect =
   let red text = "\027[31m" ^ text ^ "\027[0m" in
-  fun r c text -> if incorrect.(r).(c) then red text else text
+  fun r c text ->
+    let base = if incorrect.(r).(c) then red text else text in
+    if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base
 
-let print_board ~autocorrect incorrect grid =
+let print_board ~autocorrect original_grid incorrect grid =
   if autocorrect then
-    Sudoku.print_grid ~colorize:(colorize_board grid incorrect) grid
-  else Sudoku.print_grid grid
+    Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect) grid
+  else
+    (* Even without autocorrect, bold original board numbers but do not bold
+       user-entered numbers. *)
+    Sudoku.print_grid ~colorize:(fun r c text ->
+        if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
+      grid
 
 let update_incorrect incorrect solution row col value =
   let next = Array.map Array.copy incorrect in
@@ -92,8 +99,8 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
     if lower = "clear" then (
       let reset_grid = Array.map Array.copy original_grid in
       let incorrect_reset = Array.make_matrix 9 9 false in
-      print_endline "\nBoard reset to original puzzle.";
-      print_board ~autocorrect incorrect_reset reset_grid;
+        print_endline "\nBoard reset to original puzzle.";
+          print_board ~autocorrect original_grid incorrect_reset reset_grid;
       interactive_loop reset_grid original_grid autocorrect solution
         incorrect_reset mistakes start_time)
     else
@@ -123,7 +130,7 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
           in
           let mistakes' = mistakes + (if mistake_inc then 1 else 0) in
           print_endline "";
-          print_board ~autocorrect incorrect' updated_grid;
+          print_board ~autocorrect original_grid incorrect' updated_grid;
           if mistakes' >= 3 then (
             print_endline
               "\nYou ran out of tries. The correct board is:\n";
@@ -196,7 +203,7 @@ let start_game initial_grid =
      You have 3 mistakes total; after 3 wrong entries the solution is shown.";
   let incorrect = Array.make_matrix 9 9 false in
   let start_time = Unix.gettimeofday () in
-  print_board ~autocorrect incorrect grid;
+    print_board ~autocorrect original_grid incorrect grid;
   handle_completion grid original_grid autocorrect solution_opt incorrect 0
     start_time
 
