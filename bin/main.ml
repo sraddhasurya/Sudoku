@@ -51,18 +51,16 @@ let rec prompt_autocorrect () =
 let colorize_board original_grid incorrect =
   let red text = "\027[31m" ^ text ^ "\027[0m" in
   fun r c text ->
-    let base = if incorrect.(r).(c) then red text else text in
-    if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base
+    if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m"
+    else if incorrect.(r).(c) then red text
+    else text
 
 let print_board ~autocorrect original_grid incorrect grid =
   if autocorrect then
     Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect) grid
   else
-    (* Even without autocorrect, bold original board numbers but do not bold
-       user-entered numbers. *)
-    Sudoku.print_grid ~colorize:(fun r c text ->
-        if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
-      grid
+    (* Bold original board numbers; user-entered numbers stay unbolded. *)
+    Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect) grid
 
 let update_incorrect incorrect solution row col value =
   let next = Array.map Array.copy incorrect in
