@@ -226,18 +226,24 @@ and interactive_loop grid original_grid autocorrect solution incorrect hints
         print_endline "Returning to menu...";
         Menu
     | Move (value, row_input, col_input) -> (
-        (* Convert 1-indexed coordinates to 0-indexed *)
-        let row = row_input - 1 in
-        let col = col_input - 1 in
         if value < 0 || value > 9 then (
           prerr_endline "Number must be between 1 and 9 (use 0 to clear).";
           interactive_loop grid original_grid autocorrect solution incorrect
             hints mistakes start_time)
-        else if hints.(row).(col) then (
-          prerr_endline "Cannot change a hinted cell.";
+        else if row_input < 1 || row_input > 9 || col_input < 1 || col_input > 9
+        then (
+          prerr_endline "Row and column numbers must be between 1 and 9.";
           interactive_loop grid original_grid autocorrect solution incorrect
             hints mistakes start_time)
         else
+          (* Convert 1-indexed coordinates to 0-indexed *)
+          let row = row_input - 1 in
+          let col = col_input - 1 in
+          if hints.(row).(col) then (
+          prerr_endline "Cannot change a hinted cell.";
+          interactive_loop grid original_grid autocorrect solution incorrect
+            hints mistakes start_time)
+          else
           try
             let updated_grid =
               Sudoku.update_cell grid original_grid row col value
