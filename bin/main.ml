@@ -90,7 +90,8 @@ let rec handle_completion grid original_grid autocorrect solution incorrect
 
 and interactive_loop grid original_grid autocorrect solution incorrect mistakes
     start_time =
-  print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes);
+  if autocorrect then print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes)
+  else print_endline "";
   print_string "Enter move: ";
   flush stdout;
   try
