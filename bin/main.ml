@@ -19,7 +19,7 @@ let parse_input input =
       (* In Str.regexp, \( and \) are capturing groups, literal parens are just ( and ) *)
       let regexp =
         Str.regexp
-          "^\\([0-9]\\)[ \t]*([ \t]*\\([0-9]\\)[ \t]*,[ \t]*\\([0-9]\\)[ \t]*)$"
+          "^\\(-?[0-9]+\\)[ \t]*([ \t]*\\([0-9]+\\)[ \t]*,[ \t]*\\([0-9]+\\)[ \t]*)$"
       in
       if Str.string_match regexp input 0 then
         let value = int_of_string (Str.matched_group 1 input) in
@@ -53,14 +53,11 @@ let colorize_board original_grid incorrect hint_pos =
   let cyan text = "\027[36m" ^ text ^ "\027[0m" in
   fun r c text ->
     (* Hint takes precedence *)
-    if
-      match hint_pos with
-      | Some (hr, hc) -> hr = r && hc = c
-      | None -> false
-    then cyan text
-    else
-      let base = if incorrect.(r).(c) then red text else text in
-      if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base
+    (match hint_pos with
+    | Some (hr, hc) when hr = r && hc = c -> cyan text
+    | _ ->
+        let base = if incorrect.(r).(c) then red text else text in
+        if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base)
 
 let print_board ?hint ~autocorrect original_grid incorrect grid =
   let hint_pos = match hint with None -> None | Some p -> Some p in
@@ -68,21 +65,21 @@ let print_board ?hint ~autocorrect original_grid incorrect grid =
     Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect hint_pos) grid
   else
     (* Even without autocorrect, bold original board numbers but do not bold
-       user-entered numbers. If a hint is provided, color it. *)
-    Sudoku.print_grid
-      ~colorize:(fun r c text ->
-        if
-          match hint_pos with
-          | Some (hr, hc) when hr = r && hc = c -> true
-          | _ -> false
-        then "\027[36m" ^ text ^ "\027[0m"
-        else if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
+       user-entered numbers. *)
+    Sudoku.print_grid ~colorize:(fun r c text ->
+        if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
       grid
 
 let update_incorrect incorrect solution row col value =
   let next = Array.map Array.copy incorrect in
   next.(row).(col) <- value <> 0 && value <> solution.(row).(col);
   next
+
+let duplicate_error msg =
+  try
+    ignore (Str.search_forward (Str.regexp_case_fold "duplicate") msg 0);
+    true
+  with Not_found -> false
 
 let rec handle_completion grid original_grid autocorrect solution incorrect
     mistakes start_time =
@@ -105,7 +102,8 @@ let rec handle_completion grid original_grid autocorrect solution incorrect
 
 and interactive_loop grid original_grid autocorrect solution incorrect mistakes
     start_time =
-  print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes);
+  if autocorrect then print_endline (Printf.sprintf "\nMistakes: %d/3" mistakes)
+  else print_endline "";
   print_string "Enter move: ";
   flush stdout;
   try
@@ -158,15 +156,20 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
         (* Convert 1-indexed coordinates to 0-indexed *)
         let row = y - 1 in
         let col = x - 1 in
-        try
-          let updated_grid =
-            Sudoku.update_cell grid original_grid row col value
-          in
-          let incorrect' =
-            match (autocorrect, solution) with
-            | true, Some sol -> update_incorrect incorrect sol row col value
-            | _ -> incorrect
-          in
+        if value < 0 || value > 9 then (
+          prerr_endline "Number must be between 1 and 9 (use 0 to clear).";
+          interactive_loop grid original_grid autocorrect solution incorrect
+            mistakes start_time)
+        else
+          try
+            let updated_grid =
+              Sudoku.update_cell grid original_grid row col value
+            in
+            let incorrect' =
+              match (autocorrect, solution) with
+              | true, Some sol -> update_incorrect incorrect sol row col value
+              | _ -> incorrect
+            in
           let mistake_inc =
             match solution with
             | Some sol -> value <> 0 && value <> sol.(row).(col)
@@ -203,9 +206,33 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
             interactive_loop updated_grid original_grid autocorrect solution
               incorrect' mistakes' start_time
         with Sudoku.Parse_error msg ->
-          prerr_endline ("Error: " ^ msg);
-          interactive_loop grid original_grid autocorrect solution incorrect
-            mistakes start_time)
+          if duplicate_error msg then (
+            let mistakes' = mistakes + 1 in
+            let updated_grid = Array.map Array.copy grid in
+            updated_grid.(row).(col) <- value;
+            let incorrect' =
+              match (autocorrect, solution) with
+              | true, Some sol -> update_incorrect incorrect sol row col value
+              | _ -> incorrect
+            in
+            print_endline "";
+            print_board ~autocorrect original_grid incorrect' updated_grid;
+            if mistakes' >= 3 then (
+              print_endline
+                "\nYou ran out of tries. The correct board is:\n";
+              (match solution with
+              | Some sol -> Sudoku.print_grid sol
+              | None ->
+                  print_endline
+                    "Solver could not produce a solution to display.");
+              Printf.printf "Time: %s\n%!" (format_elapsed start_time);
+              exit 0);
+            interactive_loop updated_grid original_grid autocorrect solution
+              incorrect' mistakes' start_time)
+          else (
+            prerr_endline ("Error: " ^ msg);
+            interactive_loop grid original_grid autocorrect solution incorrect
+              mistakes start_time))
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
