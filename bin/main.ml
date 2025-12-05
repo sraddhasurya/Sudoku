@@ -48,20 +48,35 @@ let rec prompt_autocorrect () =
           prerr_endline "Please answer y or n.";
           prompt_autocorrect ())
 
-let colorize_board original_grid incorrect =
+let colorize_board original_grid incorrect hint_pos =
   let red text = "\027[31m" ^ text ^ "\027[0m" in
+  let cyan text = "\027[36m" ^ text ^ "\027[0m" in
   fun r c text ->
-    let base = if incorrect.(r).(c) then red text else text in
-    if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base
+    (* Hint takes precedence *)
+    if
+      match hint_pos with
+      | Some (hr, hc) -> hr = r && hc = c
+      | None -> false
+    then cyan text
+    else
+      let base = if incorrect.(r).(c) then red text else text in
+      if original_grid.(r).(c) <> 0 then "\027[1m" ^ base ^ "\027[0m" else base
 
-let print_board ~autocorrect original_grid incorrect grid =
+let print_board ?hint ~autocorrect original_grid incorrect grid =
+  let hint_pos = match hint with None -> None | Some p -> Some p in
   if autocorrect then
-    Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect) grid
+    Sudoku.print_grid ~colorize:(colorize_board original_grid incorrect hint_pos) grid
   else
     (* Even without autocorrect, bold original board numbers but do not bold
-       user-entered numbers. *)
-    Sudoku.print_grid ~colorize:(fun r c text ->
-        if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
+       user-entered numbers. If a hint is provided, color it. *)
+    Sudoku.print_grid
+      ~colorize:(fun r c text ->
+        if
+          match hint_pos with
+          | Some (hr, hc) when hr = r && hc = c -> true
+          | _ -> false
+        then "\027[36m" ^ text ^ "\027[0m"
+        else if original_grid.(r).(c) <> 0 then "\027[1m" ^ text ^ "\027[0m" else text)
       grid
 
 let update_incorrect incorrect solution row col value =
@@ -103,6 +118,35 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
           print_board ~autocorrect original_grid incorrect_reset reset_grid;
       interactive_loop reset_grid original_grid autocorrect solution
         incorrect_reset mistakes start_time)
+    else if lower = "hint" || lower = "h" then (
+      match solution with
+      | None -> prerr_endline "Hint unavailable: solver could not find a solution."; interactive_loop grid original_grid autocorrect solution incorrect mistakes start_time
+      | Some sol -> (
+          (* Collect positions that are empty in the current grid and in the
+             original puzzle (so we don't overwrite original clues). *)
+          let empties = ref [] in
+          for r = 0 to 8 do
+            for c = 0 to 8 do
+              if grid.(r).(c) = 0 && original_grid.(r).(c) = 0 then empties := (r, c) :: !empties
+            done
+          done;
+          match !empties with
+          | [] -> prerr_endline "No available empty cells for a hint."; interactive_loop grid original_grid autocorrect solution incorrect mistakes start_time
+          | _ ->
+              let arr = Array.of_list !empties in
+              let idx = Random.int (Array.length arr) in
+              let (hr, hc) = arr.(idx) in
+              (* Place the solved value into a copy of the current grid without
+                 validating against the possibly-incorrect current entries. *)
+              let new_grid = Array.map Array.copy grid in
+              new_grid.(hr).(hc) <- sol.(hr).(hc);
+              (* Optionally lock the hinted cell into original grid so it cannot be edited *)
+              let new_original = Array.map Array.copy original_grid in
+              new_original.(hr).(hc) <- sol.(hr).(hc);
+              print_endline "";
+              let color = colorize_board new_original incorrect (Some (hr, hc)) in
+              Sudoku.print_grid ~colorize:color new_grid;
+              interactive_loop new_grid new_original autocorrect solution incorrect mistakes start_time))
     else
       match parse_input input with
     | None ->
@@ -197,6 +241,7 @@ let start_game initial_grid =
     "\n\
      Commands:\n\
      - Enter moves as: <number> (<row>, <col>)\n\
+     - Type 'hint' to get a hint \n\
      - Type 'clear' to reset to the original puzzle\n\
      - Type 'quit' to exit\n\
      - Enter 0 to erase a tile\n\
