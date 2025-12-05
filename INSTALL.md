@@ -17,7 +17,7 @@ dune build
 ```
 Run the CLI:  
 ```bash
-dune exec sudoku ./sample_board.json
+dune exec bin/main.exe
 ```
 
 4) Run tests  
