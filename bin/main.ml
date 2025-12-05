@@ -69,6 +69,12 @@ let update_incorrect incorrect solution row col value =
   next.(row).(col) <- value <> 0 && value <> solution.(row).(col);
   next
 
+let duplicate_error msg =
+  try
+    ignore (Str.search_forward (Str.regexp_case_fold "duplicate") msg 0);
+    true
+  with Not_found -> false
+
 let rec handle_completion grid original_grid autocorrect solution incorrect
     mistakes start_time =
   if Sudoku.is_complete grid then
@@ -160,9 +166,33 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
             interactive_loop updated_grid original_grid autocorrect solution
               incorrect' mistakes' start_time
         with Sudoku.Parse_error msg ->
-          prerr_endline ("Error: " ^ msg);
-          interactive_loop grid original_grid autocorrect solution incorrect
-            mistakes start_time)
+          if duplicate_error msg then (
+            let mistakes' = mistakes + 1 in
+            let updated_grid = Array.map Array.copy grid in
+            updated_grid.(row).(col) <- value;
+            let incorrect' =
+              match (autocorrect, solution) with
+              | true, Some sol -> update_incorrect incorrect sol row col value
+              | _ -> incorrect
+            in
+            print_endline "";
+            print_board ~autocorrect original_grid incorrect' updated_grid;
+            if mistakes' >= 3 then (
+              print_endline
+                "\nYou ran out of tries. The correct board is:\n";
+              (match solution with
+              | Some sol -> Sudoku.print_grid sol
+              | None ->
+                  print_endline
+                    "Solver could not produce a solution to display.");
+              Printf.printf "Time: %s\n%!" (format_elapsed start_time);
+              exit 0);
+            interactive_loop updated_grid original_grid autocorrect solution
+              incorrect' mistakes' start_time)
+          else (
+            prerr_endline ("Error: " ^ msg);
+            interactive_loop grid original_grid autocorrect solution incorrect
+              mistakes start_time))
   with
   | End_of_file ->
       print_endline "\nGoodbye!";
