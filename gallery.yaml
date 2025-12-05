@@ -22,7 +22,7 @@ title: "The Sublime Sudoku"
 # OK if this is a Cornell Github link, but public gallery viewers won't be able to see it.
 git-repo: "https://github.coecis.cornell.edu/ae429/emerald-zeta"
 # Replace the URL with your own demo video.
-demo-video-url: "https://youtu.be/Hf9U8pb3ewAga"
+demo-video-url: "https://youtu.be/NqNNoQHTN_4"
 # Write a short, attention-grabbing description of your project.
 desc: >
   A fully-featured terminal-based Sudoku game with multiple difficulty levels, intelligent validation, and helpful gameplay features. Players can choose from Easy, Medium, or Hard puzzles, with random board selection for endless variety. The game includes real-time validation that prevents duplicate entries in rows, columns, and 3x3 boxes, with color-coded visual feedback. Features include an autocorrect mode that highlights mistakes, a hint system for assistance, and a solver that can verify solutions. Players can clear the board, track their time, and receive the solution after three mistakes. The game protects original puzzle clues from being modified while allowing full editing of user-entered values. Complete with an intuitive menu system and graceful error handling for a polished gaming experience.
