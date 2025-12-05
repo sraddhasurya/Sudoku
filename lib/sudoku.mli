@@ -1,19 +1,29 @@
 (** Types and helpers for loading and printing a Sudoku board. *)
 
 exception Parse_error of string
+(** Raised when parsing a Sudoku board fails due to invalid format, invalid
+    values, or other parsing errors. The string argument provides details about
+    the error. *)
 
 type cell = int
+(** A cell in a Sudoku board. Contains an integer 0-9, where 0 represents an
+    empty cell and 1-9 represent filled cells. *)
+
 type grid = cell array array
+(** A Sudoku board represented as a 9×9 grid of cells. *)
 
 type position = {
-  row : int;
-  col : int;
+  row : int;  (** Row index (0-8) *)
+  col : int;  (** Column index (0-8) *)
 }
+(** A position on a Sudoku board, specified by row and column indices
+    (0-indexed). *)
 
+(** Difficulty levels for generated Sudoku puzzles. *)
 type difficulty =
-  | Easy
-  | Medium
-  | Hard
+  | Easy  (** Easy puzzles have the most clues (around 40) *)
+  | Medium  (** Medium puzzles have a moderate number of clues (around 32) *)
+  | Hard  (** Hard puzzles have the fewest clues (around 25) *)
 
 val load_grid : string -> grid
 (** [load_grid path] parses a Sudoku board from the JSON file at [path]. The
@@ -21,8 +31,7 @@ val load_grid : string -> grid
     field containing that array. Cells may be integers 0–9, where 0 represents
     an empty cell. *)
 
-val format_grid :
-  ?colorize:(int -> int -> string -> string) -> grid -> string
+val format_grid : ?colorize:(int -> int -> string -> string) -> grid -> string
 (** Render a grid as a string using ASCII separators. *)
 
 val print_grid : ?colorize:(int -> int -> string -> string) -> grid -> unit

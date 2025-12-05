@@ -5,6 +5,12 @@ let assert_parse_error f =
   | exception Sudoku.Parse_error _ -> ()
   | _ -> assert_failure "Expected Sudoku.Parse_error"
 
+(** Printer function for integers. *)
+let int_printer = string_of_int
+
+(** Printer function for grids. *)
+let grid_printer grid = Sudoku.format_grid grid
+
 let with_temp_file content f =
   let file = Filename.temp_file "sudoku" ".json" in
   let oc = open_out file in
@@ -58,9 +64,9 @@ let unsolvable_json =
 let valid_board _ctx =
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
-      assert_equal 5 grid.(0).(0);
-      assert_equal 8 grid.(8).(4);
-      assert_equal 9 grid.(8).(8);
+      assert_equal ~printer:int_printer 5 grid.(0).(0);
+      assert_equal ~printer:int_printer 8 grid.(8).(4);
+      assert_equal ~printer:int_printer 9 grid.(8).(8);
       let rendering = Sudoku.format_grid grid in
       assert_bool "Includes column header" (String.contains rendering '9');
       assert_bool "Includes row label"
@@ -81,7 +87,7 @@ let object_wrapper _ctx =
   in
   with_temp_file json (fun path ->
       let grid = Sudoku.load_grid path in
-      assert_equal 0 grid.(4).(4))
+      assert_equal ~printer:int_printer 0 grid.(4).(4))
 
 let malformed_rows _ctx =
   let bad = {| [ [1,2,3], [4,5,6] ] |} in
@@ -111,19 +117,19 @@ let update_cell_valid _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated = Sudoku.update_cell grid original_grid 0 0 5 in
-  assert_equal 5 updated.(0).(0);
-  assert_equal 0 grid.(0).(0);
-  assert_equal 0 updated.(0).(1)
+  assert_equal ~printer:int_printer 5 updated.(0).(0);
+  assert_equal ~printer:int_printer 0 grid.(0).(0);
+  assert_equal ~printer:int_printer 0 updated.(0).(1)
 
 let update_cell_multiple _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 2 3 7 in
   let updated2 = Sudoku.update_cell updated1 original_grid 5 6 3 in
-  assert_equal 7 updated2.(2).(3);
-  assert_equal 3 updated2.(5).(6);
-  assert_equal 0 updated2.(0).(0);
-  assert_equal 0 updated1.(5).(6)
+  assert_equal ~printer:int_printer 7 updated2.(2).(3);
+  assert_equal ~printer:int_printer 3 updated2.(5).(6);
+  assert_equal ~printer:int_printer 0 updated2.(0).(0);
+  assert_equal ~printer:int_printer 0 updated1.(5).(6)
 
 let update_cell_invalid_row_negative _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -169,7 +175,7 @@ let update_cell_overwrite_filled _ctx =
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
       (* Cell (0,0) contains 5 in sample_json - it's locked *)
-      assert_equal 5 grid.(0).(0);
+      assert_equal ~printer:int_printer 5 grid.(0).(0);
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell grid original_grid 0 0 3)))
 
@@ -178,7 +184,7 @@ let update_cell_overwrite_filled_different_value _ctx =
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
       (* Cell (1,0) contains 6 in sample_json - it's locked *)
-      assert_equal 6 grid.(1).(0);
+      assert_equal ~printer:int_printer 6 grid.(1).(0);
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell grid original_grid 1 0 9)))
 
@@ -187,10 +193,10 @@ let update_cell_empty_cell_allowed _ctx =
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
       (* Cell (0,2) is empty (0) in sample_json *)
-      assert_equal 0 grid.(0).(2);
+      assert_equal ~printer:int_printer 0 grid.(0).(2);
       let updated = Sudoku.update_cell grid original_grid 0 2 4 in
-      assert_equal 4 updated.(0).(2);
-      assert_equal 0 grid.(0).(2))
+      assert_equal ~printer:int_printer 4 updated.(0).(2);
+      assert_equal ~printer:int_printer 0 grid.(0).(2))
 
 let update_cell_all_corners _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -201,26 +207,26 @@ let update_cell_all_corners _ctx =
     |> fun g -> Sudoku.update_cell g original_grid 8 0 3 )
     |> fun g -> Sudoku.update_cell g original_grid 8 8 4
   in
-  assert_equal 1 updated.(0).(0);
-  assert_equal 2 updated.(0).(8);
-  assert_equal 3 updated.(8).(0);
-  assert_equal 4 updated.(8).(8)
+  assert_equal ~printer:int_printer 1 updated.(0).(0);
+  assert_equal ~printer:int_printer 2 updated.(0).(8);
+  assert_equal ~printer:int_printer 3 updated.(8).(0);
+  assert_equal ~printer:int_printer 4 updated.(8).(8)
 
 let update_cell_zero_value _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated = Sudoku.update_cell grid original_grid 4 4 0 in
-  assert_equal 0 updated.(4).(4)
+  assert_equal ~printer:int_printer 0 updated.(4).(4)
 
 let update_cell_edit_user_input _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 2 3 7 in
-  assert_equal 7 updated1.(2).(3);
+  assert_equal ~printer:int_printer 7 updated1.(2).(3);
   let updated2 = Sudoku.update_cell updated1 original_grid 2 3 5 in
-  assert_equal 5 updated2.(2).(3);
+  assert_equal ~printer:int_printer 5 updated2.(2).(3);
   let updated3 = Sudoku.update_cell updated2 original_grid 2 3 0 in
-  assert_equal 0 updated3.(2).(3)
+  assert_equal ~printer:int_printer 0 updated3.(2).(3)
 
 (* Test validation functions *)
 let valid_complete_sudoku _ctx =
@@ -414,8 +420,8 @@ let solves_sample_board _ctx =
       | Error msg -> assert_failure ("Expected a solution, got error: " ^ msg)
       | Ok solved ->
           assert_bool "Solution should be valid" (Sudoku.is_valid_sudoku solved);
-          assert_equal 0 grid.(0).(2);
-          assert_equal solved_sample_grid solved)
+          assert_equal ~printer:int_printer 0 grid.(0).(2);
+          assert_equal ~printer:grid_printer solved_sample_grid solved)
 
 let detects_unsolvable_board _ctx =
   with_temp_file unsolvable_json (fun path ->
@@ -474,35 +480,35 @@ let update_cell_edit_user_input_multiple_times _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 1 1 3 in
-  assert_equal 3 updated1.(1).(1);
+  assert_equal ~printer:int_printer 3 updated1.(1).(1);
   let updated2 = Sudoku.update_cell updated1 original_grid 1 1 7 in
-  assert_equal 7 updated2.(1).(1);
+  assert_equal ~printer:int_printer 7 updated2.(1).(1);
   let updated3 = Sudoku.update_cell updated2 original_grid 1 1 9 in
-  assert_equal 9 updated3.(1).(1);
+  assert_equal ~printer:int_printer 9 updated3.(1).(1);
   let updated4 = Sudoku.update_cell updated3 original_grid 1 1 1 in
-  assert_equal 1 updated4.(1).(1)
+  assert_equal ~printer:int_printer 1 updated4.(1).(1)
 
 let update_cell_clear_user_input _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 5 5 8 in
-  assert_equal 8 updated1.(5).(5);
+  assert_equal ~printer:int_printer 8 updated1.(5).(5);
   let updated2 = Sudoku.update_cell updated1 original_grid 5 5 0 in
-  assert_equal 0 updated2.(5).(5);
+  assert_equal ~printer:int_printer 0 updated2.(5).(5);
   let updated3 = Sudoku.update_cell updated2 original_grid 5 5 2 in
-  assert_equal 2 updated3.(5).(5)
+  assert_equal ~printer:int_printer 2 updated3.(5).(5)
 
 let update_cell_edit_after_clearing_user_input _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
   let original_grid = Array.map (fun row -> Array.copy row) empty_grid in
   let updated1 = Sudoku.update_cell grid original_grid 3 3 5 in
-  assert_equal 5 updated1.(3).(3);
+  assert_equal ~printer:int_printer 5 updated1.(3).(3);
   let updated2 = Sudoku.update_cell updated1 original_grid 3 3 0 in
-  assert_equal 0 updated2.(3).(3);
+  assert_equal ~printer:int_printer 0 updated2.(3).(3);
   let updated3 = Sudoku.update_cell updated2 original_grid 3 3 8 in
-  assert_equal 8 updated3.(3).(3);
+  assert_equal ~printer:int_printer 8 updated3.(3).(3);
   let updated4 = Sudoku.update_cell updated3 original_grid 3 3 1 in
-  assert_equal 1 updated4.(3).(3)
+  assert_equal ~printer:int_printer 1 updated4.(3).(3)
 
 let update_cell_edit_multiple_user_cells _ctx =
   let grid = Array.map (fun row -> Array.copy row) empty_grid in
@@ -510,19 +516,19 @@ let update_cell_edit_multiple_user_cells _ctx =
   let updated1 = Sudoku.update_cell grid original_grid 0 0 1 in
   let updated2 = Sudoku.update_cell updated1 original_grid 2 2 5 in
   let updated3 = Sudoku.update_cell updated2 original_grid 4 4 9 in
-  assert_equal 1 updated3.(0).(0);
-  assert_equal 5 updated3.(2).(2);
-  assert_equal 9 updated3.(4).(4);
+  assert_equal ~printer:int_printer 1 updated3.(0).(0);
+  assert_equal ~printer:int_printer 5 updated3.(2).(2);
+  assert_equal ~printer:int_printer 9 updated3.(4).(4);
   let updated4 = Sudoku.update_cell updated3 original_grid 0 0 3 in
   let updated5 = Sudoku.update_cell updated4 original_grid 2 2 7 in
   let updated6 = Sudoku.update_cell updated5 original_grid 4 4 2 in
-  assert_equal 3 updated6.(0).(0);
-  assert_equal 7 updated6.(2).(2);
-  assert_equal 2 updated6.(4).(4);
+  assert_equal ~printer:int_printer 3 updated6.(0).(0);
+  assert_equal ~printer:int_printer 7 updated6.(2).(2);
+  assert_equal ~printer:int_printer 2 updated6.(4).(4);
   let updated7 = Sudoku.update_cell updated6 original_grid 2 2 0 in
-  assert_equal 0 updated7.(2).(2);
-  assert_equal 3 updated7.(0).(0);
-  assert_equal 2 updated7.(4).(4)
+  assert_equal ~printer:int_printer 0 updated7.(2).(2);
+  assert_equal ~printer:int_printer 3 updated7.(0).(0);
+  assert_equal ~printer:int_printer 2 updated7.(4).(4)
 
 (* Tests for mixed scenarios *)
 let update_cell_mixed_original_and_user_cells _ctx =
@@ -530,48 +536,48 @@ let update_cell_mixed_original_and_user_cells _ctx =
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
       let updated1 = Sudoku.update_cell grid original_grid 0 2 4 in
-      assert_equal 4 updated1.(0).(2);
+      assert_equal ~printer:int_printer 4 updated1.(0).(2);
       let updated2 = Sudoku.update_cell updated1 original_grid 0 2 2 in
-      assert_equal 2 updated2.(0).(2);
+      assert_equal ~printer:int_printer 2 updated2.(0).(2);
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell updated2 original_grid 0 0 1));
       let updated3 = Sudoku.update_cell updated2 original_grid 0 5 4 in
-      assert_equal 4 updated3.(0).(5);
+      assert_equal ~printer:int_printer 4 updated3.(0).(5);
       let updated4 = Sudoku.update_cell updated3 original_grid 0 5 6 in
-      assert_equal 6 updated4.(0).(5);
+      assert_equal ~printer:int_printer 6 updated4.(0).(5);
       assert_parse_error (fun () ->
           ignore (Sudoku.update_cell updated4 original_grid 0 1 1));
       let updated5 = Sudoku.update_cell updated4 original_grid 0 2 0 in
-      assert_equal 0 updated5.(0).(2);
-      assert_equal 6 updated5.(0).(5))
+      assert_equal ~printer:int_printer 0 updated5.(0).(2);
+      assert_equal ~printer:int_printer 6 updated5.(0).(5))
 
 let update_cell_edit_user_fill_then_edit _ctx =
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      assert_equal 0 grid.(0).(2);
-      assert_equal 0 original_grid.(0).(2);
+      assert_equal ~printer:int_printer 0 grid.(0).(2);
+      assert_equal ~printer:int_printer 0 original_grid.(0).(2);
       let updated1 = Sudoku.update_cell grid original_grid 0 2 4 in
-      assert_equal 4 updated1.(0).(2);
+      assert_equal ~printer:int_printer 4 updated1.(0).(2);
       let updated2 = Sudoku.update_cell updated1 original_grid 0 2 2 in
-      assert_equal 2 updated2.(0).(2);
+      assert_equal ~printer:int_printer 2 updated2.(0).(2);
       let updated3 = Sudoku.update_cell updated2 original_grid 0 2 2 in
-      assert_equal 2 updated3.(0).(2);
+      assert_equal ~printer:int_printer 2 updated3.(0).(2);
       let updated4 = Sudoku.update_cell updated3 original_grid 0 2 0 in
-      assert_equal 0 updated4.(0).(2))
+      assert_equal ~printer:int_printer 0 updated4.(0).(2))
 
 let update_cell_empty_original_cell_editable _ctx =
   with_temp_file sample_json (fun path ->
       let grid = Sudoku.load_grid path in
       let original_grid = Sudoku.load_grid path in
-      assert_equal 0 grid.(0).(2);
-      assert_equal 0 original_grid.(0).(2);
+      assert_equal ~printer:int_printer 0 grid.(0).(2);
+      assert_equal ~printer:int_printer 0 original_grid.(0).(2);
       let updated = Sudoku.update_cell grid original_grid 0 2 4 in
-      assert_equal 4 updated.(0).(2);
+      assert_equal ~printer:int_printer 4 updated.(0).(2);
       let updated2 = Sudoku.update_cell updated original_grid 0 2 2 in
-      assert_equal 2 updated2.(0).(2);
+      assert_equal ~printer:int_printer 2 updated2.(0).(2);
       let updated3 = Sudoku.update_cell updated2 original_grid 0 2 0 in
-      assert_equal 0 updated3.(0).(2))
+      assert_equal ~printer:int_printer 0 updated3.(0).(2))
 
 (* Tests for duplicate validation during gameplay *)
 let update_cell_prevent_duplicate_in_row _ctx =
@@ -607,7 +613,7 @@ let update_cell_allow_valid_move _ctx =
       (* Column 2: 0, 0, 8, 0, 0, 0, 0, 0, 0 *)
       (* Can place 4 at (0,2) - no duplicates *)
       let updated = Sudoku.update_cell grid original_grid 0 2 4 in
-      assert_equal 4 updated.(0).(2))
+      assert_equal ~printer:int_printer 4 updated.(0).(2))
 
 let update_cell_allow_clearing_even_with_duplicates _ctx =
   let grid = Array.make_matrix 9 9 0 in
@@ -615,8 +621,8 @@ let update_cell_allow_clearing_even_with_duplicates _ctx =
   grid.(0).(0) <- 5;
   grid.(0).(1) <- 5;
   let updated = Sudoku.update_cell grid original_grid 0 1 0 in
-  assert_equal 0 updated.(0).(1);
-  assert_equal 5 updated.(0).(0)
+  assert_equal ~printer:int_printer 0 updated.(0).(1);
+  assert_equal ~printer:int_printer 5 updated.(0).(0)
 
 let update_cell_prevent_multiple_duplicates _ctx =
   with_temp_file sample_json (fun path ->
@@ -810,8 +816,8 @@ let format_grid_with_colorize _ctx =
 (* Tests for generate function *)
 let generate_easy _ctx =
   let grid = Sudoku.generate Sudoku.Easy in
-  assert_equal 9 (Array.length grid);
-  assert_equal 9 (Array.length grid.(0));
+  assert_equal ~printer:int_printer 9 (Array.length grid);
+  assert_equal ~printer:int_printer 9 (Array.length grid.(0));
   let count = ref 0 in
   for i = 0 to 8 do
     for j = 0 to 8 do
@@ -826,8 +832,8 @@ let generate_easy _ctx =
 
 let generate_medium _ctx =
   let grid = Sudoku.generate Sudoku.Medium in
-  assert_equal 9 (Array.length grid);
-  assert_equal 9 (Array.length grid.(0));
+  assert_equal ~printer:int_printer 9 (Array.length grid);
+  assert_equal ~printer:int_printer 9 (Array.length grid.(0));
   let count = ref 0 in
   for i = 0 to 8 do
     for j = 0 to 8 do
@@ -842,8 +848,8 @@ let generate_medium _ctx =
 
 let generate_hard _ctx =
   let grid = Sudoku.generate Sudoku.Hard in
-  assert_equal 9 (Array.length grid);
-  assert_equal 9 (Array.length grid.(0));
+  assert_equal ~printer:int_printer 9 (Array.length grid);
+  assert_equal ~printer:int_printer 9 (Array.length grid.(0));
   let count = ref 0 in
   for i = 0 to 8 do
     for j = 0 to 8 do
