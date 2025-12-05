@@ -111,26 +111,40 @@ let read_field label =
   | s -> String.trim s
 
 let read_action () =
-  print_endline "Enter move (or type 'hint', 'clear', 'menu', 'quit'):";
-  let value_input = read_field "value: " in
-  match String.lowercase_ascii value_input with
-  | "hint" | "h" -> CmdHint
-  | "clear" -> CmdClear
-  | "menu" -> CmdMenu
-  | "quit" | "exit" | "q" -> CmdQuit
-  | _ ->
-      let row_input = read_field "row: " in
-      let col_input = read_field "col: " in
-      try
-        let value = int_of_string value_input in
-        let row = int_of_string row_input in
-        let col = int_of_string col_input in
-        Move (value, row, col)
-      with Failure _ ->
-        raise
-          (Invalid_argument
-             "Please enter numeric values for value, row, and col (or type a \
-              command).")
+  print_string "Enter value row col (ex: 1 1 1) (or 'hint', 'clear', 'menu', 'quit'): ";
+  flush stdout;
+  match read_line () with
+  | exception End_of_file -> raise End_of_file
+  | line -> (
+      let trimmed = String.trim line in
+      match String.lowercase_ascii trimmed with
+      | "hint" | "h" -> CmdHint
+      | "clear" -> CmdClear
+      | "menu" -> CmdMenu
+      | "quit" | "exit" | "q" -> CmdQuit
+      | _ -> (
+          let parts =
+            trimmed
+            |> String.split_on_char ' '
+            |> List.filter (fun s -> String.trim s <> "")
+          in
+          match parts with
+          | [ v; r; c ] -> (
+              try
+                let value = int_of_string v in
+                let row = int_of_string r in
+                let col = int_of_string c in
+                Move (value, row, col)
+              with Failure _ ->
+                raise
+                  (Invalid_argument
+                     "Please enter three numbers: value row col (or a \
+                      command)."))
+          | _ ->
+              raise
+                (Invalid_argument
+                   "Please enter three numbers separated by spaces: value row \
+                    col (or a command).")))
 
 let rec handle_completion grid original_grid autocorrect solution incorrect
     hints mistakes start_time =
@@ -330,7 +344,7 @@ let start_game initial_grid =
   print_endline
     "\n\
      Commands:\n\
-     - Enter moves via prompts for value, row, and col (1-9; 0 clears)\n\
+     - Enter moves as: value row col (1-9; 0 clears)\n\
      - Type 'hint' to fill a random empty cell correctly\n\
      - Type 'clear' to reset to the original puzzle\n\
      - Type 'menu' to pick a different puzzle\n\
