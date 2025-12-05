@@ -19,7 +19,7 @@ let parse_input input =
       (* In Str.regexp, \( and \) are capturing groups, literal parens are just ( and ) *)
       let regexp =
         Str.regexp
-          "^\\([0-9]\\)[ \t]*([ \t]*\\([0-9]\\)[ \t]*,[ \t]*\\([0-9]\\)[ \t]*)$"
+          "^\\(-?[0-9]+\\)[ \t]*([ \t]*\\([0-9]+\\)[ \t]*,[ \t]*\\([0-9]+\\)[ \t]*)$"
       in
       if Str.string_match regexp input 0 then
         let value = int_of_string (Str.matched_group 1 input) in
@@ -121,15 +121,20 @@ and interactive_loop grid original_grid autocorrect solution incorrect mistakes
         (* Convert 1-indexed coordinates to 0-indexed *)
         let row = y - 1 in
         let col = x - 1 in
-        try
-          let updated_grid =
-            Sudoku.update_cell grid original_grid row col value
-          in
-          let incorrect' =
-            match (autocorrect, solution) with
-            | true, Some sol -> update_incorrect incorrect sol row col value
-            | _ -> incorrect
-          in
+        if value < 0 || value > 9 then (
+          prerr_endline "Number must be between 1 and 9 (use 0 to clear).";
+          interactive_loop grid original_grid autocorrect solution incorrect
+            mistakes start_time)
+        else
+          try
+            let updated_grid =
+              Sudoku.update_cell grid original_grid row col value
+            in
+            let incorrect' =
+              match (autocorrect, solution) with
+              | true, Some sol -> update_incorrect incorrect sol row col value
+              | _ -> incorrect
+            in
           let mistake_inc =
             match solution with
             | Some sol -> value <> 0 && value <> sol.(row).(col)
