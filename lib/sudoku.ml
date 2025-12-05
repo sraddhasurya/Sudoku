@@ -385,7 +385,7 @@ let update_cell grid original_grid row col value =
          (Printf.sprintf
             "Cell at (%d, %d) is part of the original puzzle and cannot be \
              changed."
-            (col + 1) (row + 1)));
+            (row + 1) (col + 1)));
   (* Check if the move would create a duplicate *)
   (if would_create_duplicate grid row col value then
      (* Determine which constraint is violated for error message *)
