@@ -1,0 +1,228 @@
+* 7fda1ec 2025-12-05 13:20 EST Made the error for when they try to place a number in an invalid spot more user friendly| 
+|  bin/main.ml | 16 +++++++++++-----
+|  1 file changed, 11 insertions(+), 5 deletions(-)
+
+* 8f44ec3 2025-12-04 22:33 EST Fixed bug in error message| 
+|  lib/sudoku.ml | 2 +-
+|  1 file changed, 1 insertion(+), 1 deletion(-)
+
+* d3734c1 2025-12-04 22:20 EST Add gallery configuration; ensured 3110 programming guidelines are met| 
+|  gallery.yaml        |  28 ++++++++++
+|  lib/sudoku.mli      |  23 +++++---
+|  repoURL.txt         |   1 +
+|  test/test_sudoku.ml | 150 ++++++++++++++++++++++++++------------------------
+|  4 files changed, 123 insertions(+), 79 deletions(-)
+
+* 73ea2e7 2025-12-04 22:09 EST Changed format for input to make it more user friendly| 
+|  bin/main.ml | 56 +++++++++++++++++++++++++++++++++++---------------------
+|  1 file changed, 35 insertions(+), 21 deletions(-)
+
+*   04efac8 2025-12-04 22:01 EST Implemented menu functionality
+|\  
+| *   e93cc69 2025-12-04 21:31 EST Added hints functionality
+| |\  
+| * | e87e945 2025-12-04 21:25 EST Added hints functionality| | | 
+| | |  bin/main.ml | 61 +++++++++++++++++++++++++++++++++++++++++++++++--------
+| | |  1 file changed, 53 insertions(+), 8 deletions(-)
+
+* | | 3399881 2025-12-04 21:32 EST Implemented hints functionality| | | 
+| | |  bin/main.ml | 59 ++++++++++++++++++++++++++++++-------------------------
+| | |  1 file changed, 32 insertions(+), 27 deletions(-)
+
+* | |   65daff6 2025-12-04 21:28 EST Merge branch 'main' of github.coecis.cornell.edu:ae429/emerald-zeta
+|\ \ \  
+| | |/  
+| |/|   
+| * | 19a8f80 2025-12-04 21:19 EST Made the original board bold| | | 
+| | |  bin/main.ml | 12 +++++-------
+| | |  1 file changed, 5 insertions(+), 7 deletions(-)
+
+* | | 8b878a7 2025-12-04 21:22 EST Implemented hints functionality to the game
+|/ /  | |   
+| |    bin/main.ml | 123 +++++++++++++++++++++++++++++++++++++++---------------
+| |    1 file changed, 89 insertions(+), 34 deletions(-)
+
+* | b0379b5 2025-12-04 21:13 EST Added a clearer error message for when a invalid number is input (less than one or greater than nine)| | 
+| |  bin/main.ml | 25 +++++++++++++++----------
+| |  1 file changed, 15 insertions(+), 10 deletions(-)
+
+* | d90611a 2025-12-04 21:09 EST Made invalid inputs where the same numer is in the row, col, or square a mistake instead of an error message| | 
+| |  bin/main.ml | 36 +++++++++++++++++++++++++++++++++---
+| |  1 file changed, 33 insertions(+), 3 deletions(-)
+
+* | 3c0f332 2025-12-04 20:59 EST Turned off showing the number of mistakes for non autocorrect mode
+|/  |   
+|    bin/main.ml | 3 ++-
+|    1 file changed, 2 insertions(+), 1 deletion(-)
+
+* d0ff125 2025-12-04 20:25 EST Added bolding for tiles in original board| 
+|  bin/main.ml | 25 ++++++++++++++++---------
+|  1 file changed, 16 insertions(+), 9 deletions(-)
+
+* 15a2f38 2025-12-04 20:01 EST Implemented erasing tile| 
+|  bin/main.ml | 1 +
+|  1 file changed, 1 insertion(+)
+
+* 513807a 2025-12-04 18:44 EST additional tests to achieve 88% coverage| 
+|  lib/sudoku.ml       |  75 +++++++-----
+|  test/test_sudoku.ml | 328 +++++++++++++++++++++++++++++++++++++-------------
+|  2 files changed, 290 insertions(+), 113 deletions(-)
+
+* c32161e 2025-12-04 19:45 EST Implemented different difficulty levels| 
+|  bin/main.ml | 58 +++++++++++++++++++++++++++++++++++++++++++++++++---------
+|  1 file changed, 49 insertions(+), 9 deletions(-)
+
+* eb5604c 2025-12-04 16:40 EST Prompts user for difficulty level and randomly chooses board of that difficulty| 
+|  boards/easy/board2.json   | 16 ++++++++--------
+|  boards/easy/board3.json   | 16 ++++++++--------
+|  boards/easy/board4.json   |  8 ++++----
+|  boards/easy/board5.json   | 28 ++++++++++++++--------------
+|  boards/hard/board1.json   | 24 ++++++++++++------------
+|  boards/hard/board2.json   | 28 ++++++++++++++--------------
+|  boards/hard/board3.json   | 42 +++++++++++++++++++++---------------------
+|  boards/hard/board4.json   | 36 ++++++++++++++++++------------------
+|  boards/hard/board5.json   | 30 +++++++++++++++---------------
+|  boards/medium/board1.json | 16 ++++++++--------
+|  boards/medium/board2.json | 14 +++++++-------
+|  boards/medium/board3.json | 30 +++++++++++++++---------------
+|  boards/medium/board4.json | 26 +++++++++++++-------------
+|  boards/medium/board5.json | 32 ++++++++++++++++----------------
+|  14 files changed, 173 insertions(+), 173 deletions(-)
+
+* 65c0560 2025-12-03 17:55 EST Implemented timer functionality and logic to check whether the user has completed the puzzle| 
+|  bin/dune    |   2 +-
+|  bin/main.ml | 104 ++++++++++++++++++++++++++++++++++------------------------
+|  2 files changed, 63 insertions(+), 43 deletions(-)
+
+*   fe96549 2025-12-03 17:53 EST Created Sudoku boards with 3 levels of difficulty: easy, medium, and hard
+|\  
+| * 7945c4e 2025-12-03 17:43 EST Outputs the number of mistakes during every output of the board| | 
+| |  bin/main.ml | 36 ++++++++++++++++++++++++++++--------
+| |  1 file changed, 28 insertions(+), 8 deletions(-)
+
+* | 10fcc04 2025-12-03 17:38 EST Added Sudoku boards with 3 levels of difficulty: easy, medium, and hard
+|/  |   
+|    boards/easy/board1.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/easy/board2.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/easy/board3.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/easy/board4.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/easy/board5.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/hard/board1.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/hard/board2.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/hard/board3.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/hard/board4.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/hard/board5.json   | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/medium/board1.json | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/medium/board2.json | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/medium/board3.json | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/medium/board4.json | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    boards/medium/board5.json | 101 ++++++++++++++++++++++++++++++++++++++++++
+|    15 files changed, 1515 insertions(+)
+
+* 340677f 2025-12-03 17:33 EST Implemented a clear board function where it clears the user input| 
+|  bin/main.ml    | 50 ++++++++++++++++++++++++++++++++++--------
+|  lib/sudoku.ml  | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+|  lib/sudoku.mli | 10 +++++++++
+|  3 files changed, 118 insertions(+), 9 deletions(-)
+
+* 70516b0 2025-12-03 17:16 EST Removed Puzzle Generator code because it was inefficient| 
+|  bin/main.ml         |  36 +-------
+|  lib/sudoku.ml       | 231 +++++++++++++-------------------------------------
+|  lib/sudoku.mli      |  23 -----
+|  test/test_sudoku.ml |  33 --------
+|  4 files changed, 61 insertions(+), 262 deletions(-)
+
+* f644525 2025-12-03 16:38 EST Implemented board generator function| 
+|  bin/main.ml         | 15 ++++++++++
+|  lib/sudoku.ml       | 83 +++++++++++++++++++++++++++++++++++++++++++++++++++
+|  lib/sudoku.mli      | 13 ++++++++
+|  test/test_sudoku.ml | 33 ++++++++++++++++++++
+|  4 files changed, 144 insertions(+)
+
+* 81a17d1 2025-12-03 16:21 EST Added autocorrect mode where it checks whether the user input is correct| 
+|  lib/sudoku.ml  | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++++---
+|  lib/sudoku.mli | 15 +++++++++--
+|  2 files changed, 86 insertions(+), 5 deletions(-)
+
+* 662fe30 2025-12-03 16:20 EST Added autocorrect mode where it checks whether the user input is correct| 
+|  bin/main.ml | 94 ++++++++++++++++++++++++++++++++++++++++++++++++++++-------
+|  1 file changed, 83 insertions(+), 11 deletions(-)
+
+* a91c40e 2025-12-03 15:16 EST Implemented a sudoku solver usinig backtracking| 
+|  lib/sudoku.ml       | 91 +++++++++++++++++++++++++++++++++++++++++++++++++++
+|  lib/sudoku.mli      |  5 +++
+|  test/test_sudoku.ml | 51 +++++++++++++++++++++++++++++
+|  3 files changed, 147 insertions(+)
+
+* ed3e8bb 2025-12-02 20:29 EST added bisect test instrumentation| 
+|  lib/dune | 4 +++-
+|  1 file changed, 3 insertions(+), 1 deletion(-)
+
+* 06f3216 2025-11-19 00:13 EST Fixed formatting bug| 
+|  lib/sudoku.ml | 4 ++--
+|  1 file changed, 2 insertions(+), 2 deletions(-)
+
+* 4501eca 2025-11-18 21:20 EST Added INSTALL.md file which details commands needed to run/build program| 
+|  INSTALL.md | 26 ++++++++++++++++++++++++++
+|  1 file changed, 26 insertions(+)
+
+* caecb3a 2025-11-18 21:01 EST Updated AUTHORS.md file to include authors and genAI usage thus far.| 
+|  AUTHORS.md | 8 ++++++++
+|  1 file changed, 8 insertions(+)
+
+* ad378a8 2025-11-17 16:47 EST Add Sudoku validation, cell protection, and real-time duplicate checking| 
+|  bin/main.ml         |  30 ++-
+|  lib/sudoku.ml       | 245 ++++++++++++++++++-
+|  lib/sudoku.mli      |  21 +-
+|  test/test_sudoku.ml | 652 ++++++++++++++++++++++++++++++++++++++++++++++++--
+|  4 files changed, 909 insertions(+), 39 deletions(-)
+
+* 6cb4c8c 2025-11-17 16:21 EST Add interactive Sudoku board editing with input validation| 
+|  bin/dune            |   2 +-
+|  bin/main.ml         |  67 ++++++++++++++++++++++++---
+|  lib/sudoku.ml       |  53 ++++++++++++++++-----
+|  lib/sudoku.mli      |  23 ++++++---
+|  test/test_sudoku.ml | 126 ++++++++++++++++++++++++++++++++++++++++++++++++--
+|  5 files changed, 240 insertions(+), 31 deletions(-)
+
+*   8515f84 2025-11-17 16:00 EST Merge branch 'main' of github.coecis.cornell.edu:ae429/emerald-zeta
+|\  
+| * 5cd0667 2025-11-17 15:35 EST Implement Sudoku JSON printing| | 
+| |  bin/main.ml         | 15 ++++++++-
+| |  bin/types.ml        | 15 +++------
+| |  dune-project        |  2 +-
+| |  lib/dune            |  3 +-
+| |  lib/sudoku.ml       | 86 +++++++++++++++++++++++++++++++++++++++++++++++++
+| |  lib/sudoku.mli      | 19 +++++++++++
+| |  sample_board.json   | 11 +++++++
+| |  sudoku.opam         |  2 ++
+| |  test/test_sudoku.ml | 82 ++++++++++++++++++++++++++++++++++++++++++++++
+| |  9 files changed, 221 insertions(+), 14 deletions(-)
+
+| * 57abb5d 2025-11-17 14:14 EST Update README.md| | 
+| |  README.md | 4 ++++
+| |  1 file changed, 4 insertions(+)
+
+| * 4ec8644 2025-11-17 14:08 EST Implement types.ml - Defined the different types that we are using|   
+|    .gitignore          |  3 +++
+|    .ocamlformat        |  6 ++++++
+|    AUTHORS.md          |  0
+|    README.md           |  0
+|    bin/dune            |  4 ++++
+|    bin/main.ml         |  1 +
+|    bin/types.ml        | 11 +++++++++++
+|    dune                |  1 +
+|    dune-project        | 26 ++++++++++++++++++++++++++
+|    lib/dune            |  2 ++
+|    sudoku.opam         | 32 ++++++++++++++++++++++++++++++++
+|    test/dune           |  3 +++
+|    test/test_sudoku.ml |  0
+|    13 files changed, 89 insertions(+)
+
+* 6c8b4f0 2025-10-30 17:11 EDT added name and netid to readme| 
+|  README.md | 2 ++
+|  1 file changed, 2 insertions(+)
+
+* 6fe8144 2025-10-30 17:07 EDT Initial commit  
+   README.md | 2 ++
+   1 file changed, 2 insertions(+)
