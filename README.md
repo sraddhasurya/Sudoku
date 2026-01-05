@@ -78,7 +78,7 @@ The project supports interactive gameplay across multiple difficulty levels, rea
 ---
 
 ## Project Structure
-
+```text
 ├── boards/ # Pre-generated Sudoku boards by difficulty
 ├── solver/ # Backtracking solver implementation
 ├── validation/ # Sudoku rule enforcement and logic checks
@@ -86,6 +86,7 @@ The project supports interactive gameplay across multiple difficulty levels, rea
 ├── tests/ # Unit tests for core logic
 ├── main/ # Program entry point
 └── README.md
+```
 
 
 ---
