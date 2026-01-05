@@ -75,19 +75,6 @@ The project supports interactive gameplay across multiple difficulty levels, rea
 - Visual distinction between user input, correct values, and incorrect entries
 - Consistent and structured terminal layout
 
----
-
-## Project Structure
-```text
-├── boards/ # Pre-generated Sudoku boards by difficulty
-├── solver/ # Backtracking solver implementation
-├── validation/ # Sudoku rule enforcement and logic checks
-├── game/ # Gameplay loop, menus, and UI logic
-├── tests/ # Unit tests for core logic
-├── main/ # Program entry point
-└── README.md
-```
-
 
 ---
 
