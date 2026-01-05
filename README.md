@@ -87,8 +87,6 @@ The project supports interactive gameplay across multiple difficulty levels, rea
 ├── main/ # Program entry point
 └── README.md
 
-yaml
-Copy code
 
 ---
 
